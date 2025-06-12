@@ -2,17 +2,38 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, addDoc, doc, setDoc, connectFirestoreEmulator } from 'firebase/firestore';
+import dotenv from 'dotenv';
 
-// Firebase configuration
+// Load environment variables
+dotenv.config();
+
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCZpkI1jDCVgWpChjvYcNJkRBQvD9x1lbc",
-  authDomain: "rhuden-pos-and-inventory.firebaseapp.com",
-  projectId: "rhuden-pos-and-inventory",
-  storageBucket: "rhuden-pos-and-inventory.firebasestorage.app",
-  messagingSenderId: "1096276839206",
-  appId: "1:1096276839206:web:ed08f321d2fc4247bd4fe7",
-  measurementId: "G-STPFMJZ1EM"
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+// Validate required environment variables
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN', 
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID'
+];
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

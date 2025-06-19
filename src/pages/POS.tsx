@@ -5,7 +5,7 @@ import useProducts from "../hooks/useProducts";
 import useCustomers from "../hooks/useCustomers";
 import useSales from "../hooks/useSales";
 import { usePayments } from "../hooks/usePayments";
-import type { Product, Customer, Sale } from "../types";
+import type { Product, Customer} from "../types";
 import "../styles/POS.css";
 
 interface CartItem {

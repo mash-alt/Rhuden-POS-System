@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 
 interface InventoryHamburgerMenuProps {
   onSectionChange?: (section: string) => void;
@@ -7,8 +6,6 @@ interface InventoryHamburgerMenuProps {
 
 const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSectionChange }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)

@@ -27,8 +27,6 @@ const Inventory = () => {
     deleteProduct, 
     searchProducts, 
     getLowStockProducts,
-    getTotalValue,
-    getTotalRetailValue 
   } = useProducts();
   const {
     categories,
@@ -49,7 +47,6 @@ const Inventory = () => {
   } = useSuppliers();
   
   const {
-    stockMovements,
     loading: stockMovementsLoading,
     error: stockMovementsError,
     addStockMovement,
@@ -69,8 +66,6 @@ const Inventory = () => {
   const [editingStockMovement, setEditingStockMovement] = useState<StockMovement | null>(null);// Use the enhanced search functionality
   const filteredProducts = searchProducts(searchTerm);
   const lowStockProducts = getLowStockProducts();
-  const totalInventoryValue = getTotalValue();
-  const totalRetailValue = getTotalRetailValue();
 
   // Category search functionality
   const searchCategories = (searchTerm: string) => {

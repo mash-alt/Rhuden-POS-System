@@ -74,32 +74,80 @@ The application uses **Firebase Authentication** for secure user management with
 
 ### User Roles & Privileges
 
-#### 🔑 Staff User (Default Role)
-**Access Level**: Full System Access
+#### � **Authenticated Users (Default)**
+**Access Level**: Read-Only for Core Data, Full POS Operations
 
 **Privileges**:
 - ✅ **Dashboard Access** - View all business metrics and analytics
-- ✅ **POS Operations** - Process cash and credit sales
-- ✅ **Inventory Management** - Add, edit, and manage products, categories, suppliers
-- ✅ **Customer Management** - Create and manage customer accounts
-- ✅ **Payment Processing** - Record and manage payments
+- ✅ **POS Operations** - Process cash and credit sales (full read/write access)
+- ✅ **Customer Management** - Create and manage customer accounts (full read/write access)
+- ✅ **Payment Processing** - Record and manage payments (full read/write access)
 - ✅ **Transaction History** - View all sales and payment records
-- ✅ **Stock Management** - Update inventory levels and track movements
+- ✅ **Inventory Viewing** - View products, categories, and suppliers (read-only)
+- ✅ **Stock Movement Tracking** - Create stock movements and view inventory changes
+- ✅ **User Profile** - Read and update their own user profile
 
 **Restrictions**:
-- ❌ Cannot access system administration features
-- ❌ Cannot modify user accounts or permissions
+- ❌ **Product Management** - Cannot add, edit, or delete products (admin only)
+- ❌ **Category Management** - Cannot add, edit, or delete categories (admin only)
+- ❌ **Supplier Management** - Cannot add, edit, or delete suppliers (admin only)
+- ❌ **User Administration** - Cannot access other users' profiles or system settings
+
+#### 🛡️ **Admin Users**
+**Access Level**: Full System Administration
+
+**Additional Privileges** (beyond authenticated user privileges):
+- ✅ **Product Management** - Full CRUD operations on products
+- ✅ **Category Management** - Full CRUD operations on categories
+- ✅ **Supplier Management** - Full CRUD operations on suppliers
+- ✅ **User Management** - Read access to all user documents
+- ✅ **System Administration** - Complete control over inventory structure
+
+### Database Security Rules
+
+The application implements comprehensive Firestore security rules that enforce proper access control:
+
+#### 🔐 **User Authentication Requirements**
+- **All operations require authentication** - No anonymous access allowed
+- **User document ownership** - Users can only access their own profile data
+- **Role-based access control** - Admin privileges checked for sensitive operations
+
+#### 📊 **Collection-Level Permissions**
+
+**Users Collection**:
+- ✅ **Create**: Users can create their own profile during registration
+- ✅ **Read/Update**: Users can access and modify their own profile only
+- ✅ **Admin Read**: Admins can read all user profiles for management
+
+**Products, Categories, Suppliers**:
+- ✅ **Read**: All authenticated users can view catalog data
+- ❌ **Write**: Only admin users can create, update, or delete items
+- 🔒 **Admin Check**: Write operations verify admin role in user document
+
+**Sales, Payments, Customers**:
+- ✅ **Read/Write**: All authenticated users have full access
+- 💼 **Business Operations**: Essential for POS and customer management
+
+**Inventory & Stock Movements**:
+- ✅ **Read**: All authenticated users can view inventory data
+- ✅ **Write**: All authenticated users can create stock movements
+- 📦 **Stock Tracking**: Enables inventory management by all staff
 
 #### 🛡️ Protected Routes
 All main application features require authentication:
 - `/dashboard` - Business dashboard and analytics
-- `/inventory` - Product, category, and supplier management
-- `/pos` - Point of sale operations
+- `/inventory` - Product viewing for all users, editing for admins only
+- `/pos` - Point of sale operations (full access for all authenticated users)
 - `/transactions` - Transaction history and payment records
 
 #### 🌐 Public Routes
 - `/login` - User authentication
 - `/register` - New user registration (if enabled)
+
+#### 🔑 **Role Assignment**
+- **Default Role**: New users are authenticated users with POS access
+- **Admin Promotion**: Admin role must be assigned through database or admin interface
+- **Role Persistence**: User roles stored in Firestore user documents
 
 ### Session Management
 - **Automatic logout** on session expiration
@@ -183,24 +231,42 @@ All main application features require authentication:
 
 ### Quick Start Checklist
 
-#### Setting Up Inventory
+#### Setting Up Admin Users
+**Important**: New users register as authenticated users by default. To enable inventory management, you need to promote users to admin role:
+
+1. **Manual Database Update** (Current Method):
+   - Access Firebase Console → Firestore Database
+   - Navigate to the `users` collection
+   - Find the user document (by UID)
+   - Add a field: `role` with value `"admin"`
+   - Save the changes
+
+2. **Admin Interface** (Future Enhancement):
+   - An admin user management interface can be added
+   - Allow existing admins to promote other users
+   - Role assignment through the application UI
+
+#### Setting Up Inventory (Admin Required)
 1. **Add Categories** (Inventory → Categories)
    - Create product categories (e.g., "Tools", "Materials", "Equipment")
    - Add descriptions for better organization
+   - **Requires admin role**
 
 2. **Add Suppliers** (Inventory → Suppliers)
    - Enter supplier contact information
    - Include email, phone, and address details
+   - **Requires admin role**
 
 3. **Add Products** (Inventory → Products)
    - Enter product details (SKU, name, price, cost)
    - Assign to categories and suppliers
    - Set initial stock quantities and reorder levels
+   - **Requires admin role**
 
-#### Setting Up Customers
-1. **Add Customer Accounts** (Future feature)
-   - Create customer profiles for credit sales
-   - Set credit limits and contact information
+#### Setting Up for POS Operations (All Users)
+1. **Customer Accounts** - Create customer profiles for credit sales
+2. **Stock Movements** - All users can adjust inventory levels
+3. **POS Training** - Familiarize staff with transaction processing
 
 #### Processing First Sale
 1. **Navigate to POS** (Point of Sale)
@@ -252,44 +318,51 @@ All main application features require authentication:
 ### 📦 Inventory Management
 
 #### Product Management
+**For Admin Users Only**:
 1. **Adding Products**:
    - Navigate to Inventory → Products
-   - Click "Add Product"
+   - Click "Add Product" (only visible to admins)
    - Fill in required fields: Name, SKU, Price, Category, Supplier
    - Set optional fields: Cost, Stock Quantity, Reorder Level
    - Save the product
 
 2. **Editing Products**:
-   - Click the edit button next to any product
+   - Click the edit button next to any product (admin only)
    - Modify the necessary fields
    - Save changes
 
-3. **Managing Stock**:
-   - Monitor stock levels in the product table
-   - Watch for low stock badges and alerts
-   - Update quantities through stock movements
+**For All Authenticated Users**:
+3. **Viewing Products**:
+   - Browse the complete product catalog
+   - View stock levels and product details
+   - Monitor low stock alerts and reorder levels
 
-#### Category Management
+4. **Managing Stock**:
+   - Create stock movements to adjust inventory levels
+   - Track stock changes and movements
+   - Monitor inventory through dashboard metrics
+
+#### Category Management (Admin Only)
 1. **Creating Categories**:
    - Go to Inventory → Categories
-   - Click "Add Category"
+   - Click "Add Category" (admin access required)
    - Enter category name and description
    - Save the category
 
 2. **Organizing Products**:
-   - Assign products to categories during creation/editing
-   - Use categories to filter and organize product views
+   - Categories are assigned by admins during product creation/editing
+   - All users can view and filter by categories
 
-#### Supplier Management
+#### Supplier Management (Admin Only)
 1. **Adding Suppliers**:
    - Navigate to Inventory → Suppliers
-   - Click "Add Supplier"
+   - Click "Add Supplier" (admin access required)
    - Enter supplier details: Name, Email, Phone, Address
    - Save supplier information
 
 2. **Managing Relationships**:
-   - Assign suppliers to products
-   - Track which products come from which suppliers
+   - Suppliers are assigned to products by admins
+   - All users can view supplier information for products
 
 ### 💳 Transaction Management
 
@@ -457,6 +530,21 @@ The application uses environment variables for configuration:
 - Check customer selection for credit sales
 - Verify inventory availability
 - Refresh the page and try again
+
+#### Permission Denied Errors
+**Issue**: "Permission denied" when trying to add/edit products, categories, or suppliers
+**Solution**:
+- **Check Admin Role**: Verify your user account has admin role in Firestore
+- **Role Assignment**: Contact administrator to promote your account to admin
+- **Database Access**: Ensure your user document exists in Firestore users collection
+- **Authentication**: Log out and log back in after role changes
+
+**How to Check Your Role**:
+1. Access Firebase Console
+2. Go to Firestore Database
+3. Navigate to `users` collection
+4. Find your user document (by your UID)
+5. Check if `role` field exists with value `"admin"`
 
 #### Inventory Sync Issues
 **Issue**: Stock levels not updating correctly

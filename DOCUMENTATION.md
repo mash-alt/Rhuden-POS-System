@@ -74,7 +74,7 @@ The application uses **Firebase Authentication** for secure user management with
 
 ### User Roles & Privileges
 
-#### � **Authenticated Users (Default)**
+#/### � **Authenticated Users (Default)**
 **Access Level**: Read-Only for Core Data, Full POS Operations
 
 **Privileges**:

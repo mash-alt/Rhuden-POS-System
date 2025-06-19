@@ -3,6 +3,9 @@
   min-height: 100vh;
   background-color: #f8f9fa;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .pos-header {
@@ -50,9 +53,9 @@
 
 .pos-main {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
-  height: calc(100vh - 140px);
+  min-height: 500px;
 }
 
 /* Products Section */
@@ -543,6 +546,245 @@
   color: #666;
 }
 
+/* POS Content Sections */
+.pos-content-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.pos-content-section .section-header {
+  margin-bottom: 30px;
+}
+
+.pos-content-section .section-header h2 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.pos-content-section .section-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Transaction History Styles */
+.transaction-history-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.transaction-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.transaction-section h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 10px;
+}
+
+.transaction-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transaction-row {
+  background: white;
+  border-radius: 6px;
+  padding: 15px;
+  border-left: 4px solid #3498db;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.transaction-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.transaction-date {
+  font-size: 12px;
+  color: #666;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.transaction-total {
+  font-weight: bold;
+  color: #27ae60;
+  font-size: 16px;
+}
+
+.transaction-method {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.transaction-method.cash {
+  background: #d4edda;
+  color: #155724;
+}
+
+.transaction-method.gcash {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.transaction-method.credit {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.credit-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.credit-status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.credit-status.partial {
+  background: #ffeaa7;
+  color: #d63031;
+}
+
+.credit-status.paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.transaction-reference {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Credit Payment Form Styles */
+.credit-payment-form {
+  max-width: 600px;
+}
+
+.credit-payment-form .form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.credit-payment-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.credit-payment-form .form-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.credit-payment-form select,
+.credit-payment-form input[type="number"],
+.credit-payment-form input[type="text"] {
+  padding: 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.credit-payment-form select:focus,
+.credit-payment-form input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.outstanding-balance {
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.outstanding-balance h3 {
+  margin: 0;
+  color: #1976d2;
+  font-size: 20px;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.payment-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.payment-options label:hover {
+  background: #e9ecef;
+}
+
+.payment-options input[type="radio"] {
+  width: auto;
+  margin: 0;
+}
+
+.process-payment-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+}
+
+.process-payment-btn:hover:not(:disabled) {
+  background: #229954;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
+}
+
+.process-payment-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .pos-main {
@@ -600,6 +842,19 @@
     flex-direction: column;
     gap: 10px;
   }
+  
+  .transaction-history-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .transaction-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .payment-options {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Credit Payment Section */
@@ -607,9 +862,10 @@
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
-  margin-top: 2rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .credit-payment-header {

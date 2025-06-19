@@ -328,11 +328,7 @@ export const productFormSections: FormSection[] = [
       {
         name: "active",
         label: "Active Status",
-        type: "checkbox",
-        validation: (value) => {
-          // Active field is optional, defaults to true
-          return undefined;
-        }
+        type: "checkbox"
       }
     ]
   }

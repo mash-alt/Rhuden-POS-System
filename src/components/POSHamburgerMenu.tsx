@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 
-interface InventoryHamburgerMenuProps {
+interface POSHamburgerMenuProps {
   onSectionChange?: (section: string) => void;
 }
 
-const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSectionChange }) => {
+const POSHamburgerMenu: React.FC<POSHamburgerMenuProps> = ({ onSectionChange }) => {
   const [isOpen, setIsOpen] = useState(false)
 
   const toggleMenu = () => {
@@ -17,31 +17,8 @@ const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSecti
       onSectionChange(section)
     }
   }
+
   const menuItems = [
-    {
-      id: 'products',
-      label: 'Products',
-      icon: '📦',
-      description: 'Manage product catalog'
-    },
-    {
-      id: 'categories',
-      label: 'Categories',
-      icon: '🏷️',
-      description: 'Organize product categories'
-    },
-    {
-      id: 'suppliers',
-      label: 'Suppliers',
-      icon: '🏢',
-      description: 'Manage supplier information'
-    },
-    {
-      id: 'stock-history',
-      label: 'Stock History',
-      icon: '📊',
-      description: 'View stock movements'
-    },
     {
       id: 'transaction-history',
       label: 'Transaction History',
@@ -57,12 +34,12 @@ const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSecti
   ]
 
   return (
-    <div className="inventory-hamburger">
+    <div className="pos-hamburger">
       {/* Hamburger Button */}
       <button 
         className={`hamburger-btn ${isOpen ? 'open' : ''}`}
         onClick={toggleMenu}
-        aria-label="Toggle inventory menu"
+        aria-label="Toggle POS menu"
       >
         <span className="hamburger-line"></span>
         <span className="hamburger-line"></span>
@@ -77,7 +54,7 @@ const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSecti
       {/* Menu Panel */}
       <div className={`hamburger-menu ${isOpen ? 'open' : ''}`}>
         <div className="menu-header">
-          <h3>Inventory Management</h3>
+          <h3>POS Management</h3>
           <button className="close-btn" onClick={() => setIsOpen(false)}>
             ✕
           </button>
@@ -101,11 +78,11 @@ const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSecti
         </div>
 
         <div className="menu-footer">
-          <p>Select a section to manage inventory</p>
+          <p>Select a section to manage transactions</p>
         </div>
       </div>
     </div>
   )
 }
 
-export default InventoryHamburgerMenu
+export default POSHamburgerMenu

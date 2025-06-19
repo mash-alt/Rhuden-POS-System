@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import useProducts from "../hooks/useProducts";
 import useCustomers from "../hooks/useCustomers";
 import useSales from "../hooks/useSales";
 import { usePayments } from "../hooks/usePayments";
-import type { Product, Customer} from "../types";
+import type { Product, Customer } from "../types";
 import "../styles/POS.css";
 
 interface CartItem {
@@ -15,10 +16,20 @@ interface CartItem {
 }
 
 const POS = () => {
+  const navigate = useNavigate();
   const { products, loading: productsLoading, updateProduct } = useProducts();
   const { customers, loading: customersLoading, addCustomer } = useCustomers();
   const { addSale, getTodaysSales, getTotalSalesAmount, sales } = useSales();
   const { addPayment } = usePayments();
+
+  // Current section state
+  const [currentSection, setCurrentSection] = useState("pos");
+
+  // Credit payment state
+  const [creditPaymentAmount, setCreditPaymentAmount] = useState<string>("");
+  const [creditPaymentMethod, setCreditPaymentMethod] = useState<"cash" | "gcash" | "transfer" | "check">("cash");
+  const [creditPaymentReference, setCreditPaymentReference] = useState("");
+  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<Customer | null>(null);
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -34,30 +45,130 @@ const POS = () => {
   >("cash");
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");  const [newCustomerContact, setNewCustomerContact] = useState("");
-  const [amountPaid, setAmountPaid] = useState<string>("");
-  const [paymentReference, setPaymentReference] = useState("");
+  const [amountPaid, setAmountPaid] = useState<string>("");  const [paymentReference, setPaymentReference] = useState("");
   
-  // Credit payment state
-  const [showCreditPayment, setShowCreditPayment] = useState(false);
-  const [creditPaymentAmount, setCreditPaymentAmount] = useState<string>("");
-  const [creditPaymentMethod, setCreditPaymentMethod] = useState<"cash" | "gcash" | "transfer" | "check">("cash");
-  const [creditPaymentReference, setCreditPaymentReference] = useState("");
-  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<Customer | null>(null);  // Filter products based on search (only show active products)
+  // Filter products based on search (only show active products)
   const filteredProducts = products.filter(
     (product) =>
       product.active &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  // Get customers with outstanding credit balance
-  const customersWithCredit = customers.filter(customer => (customer.creditBalance || 0) > 0);
-
+        product.sku.toLowerCase().includes(searchTerm.toLowerCase()))  );
   // Calculate total whenever cart changes
   useEffect(() => {
     const newTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
     setTotal(newTotal);
   }, [cart]);
+  // Listen for POS section changes from navbar
+  useEffect(() => {
+    const handlePOSSectionChange = (event: CustomEvent) => {
+      const section = event.detail.section;
+        if (section === "transaction-history") {
+        // Navigate to the TransactionHistory page
+        navigate("/transactions");
+      } else {
+        // Set the section for other sections (like credit-payments)
+        setCurrentSection(section);
+      }
+    };
+
+    window.addEventListener(
+      "posSectionChange",
+      handlePOSSectionChange as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "posSectionChange",
+        handlePOSSectionChange as EventListener
+      );
+    };
+  }, [navigate]);
+
+  // Get customers with outstanding credit balance
+  const customersWithCredit = customers.filter(customer => (customer.creditBalance || 0) > 0);
+
+  // Credit Payment handler
+  const processCreditPayment = async () => {
+    if (!selectedCreditCustomer) {
+      alert("Please select a customer!");
+      return;
+    }
+
+    const paymentAmount = parseFloat(creditPaymentAmount);
+    if (!paymentAmount || paymentAmount <= 0) {
+      alert("Please enter a valid payment amount!");
+      return;
+    }
+
+    if (paymentAmount > (selectedCreditCustomer.creditBalance || 0)) {
+      alert("Payment amount cannot exceed outstanding balance!");
+      return;
+    }
+
+    if (creditPaymentMethod === "gcash" && !creditPaymentReference.trim()) {
+      alert("Please enter GCash reference number!");
+      return;
+    }
+
+    try {
+      // Get customer's credit sales for payment reference
+      const customerSales = sales
+        .filter(sale => {
+          const customerIdMatch = sale.customerId && 
+            (typeof sale.customerId === 'string' ? 
+              sale.customerId === selectedCreditCustomer.id : 
+              sale.customerId.id === selectedCreditCustomer.id);
+          
+          return customerIdMatch && sale.paymentMethod === 'credit';
+        })
+        .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
+
+      if (customerSales.length === 0) {
+        alert("No credit sales found for this customer!");
+        return;
+      }
+
+      // Use the most recent credit sale for payment reference
+      const targetSale = customerSales[0];
+
+      // Create payment record
+      const paymentData: any = {
+        saleId: doc(db, "sales", targetSale.id),
+        customerId: doc(db, "customers", selectedCreditCustomer.id),
+        amount: paymentAmount,
+        date: Timestamp.now(),
+        paymentMethod: creditPaymentMethod,
+      };
+
+      // Add reference based on payment method
+      if (creditPaymentMethod === "gcash" && creditPaymentReference.trim()) {
+        paymentData.gcashReferenceNumber = creditPaymentReference.trim();
+      } else if (creditPaymentMethod === "transfer" && creditPaymentReference.trim()) {
+        paymentData.referenceCode = creditPaymentReference.trim();
+      } else if (creditPaymentMethod === "check" && creditPaymentReference.trim()) {
+        paymentData.checkNumber = creditPaymentReference.trim();
+      }
+
+      // Add payment to database
+      await addPayment(paymentData);
+
+      // Update customer credit balance
+      const newCreditBalance = (selectedCreditCustomer.creditBalance || 0) - paymentAmount;
+      await updateDoc(doc(db, "customers", selectedCreditCustomer.id), {
+        creditBalance: newCreditBalance,
+      });
+
+      alert(`Payment of ₱${paymentAmount.toFixed(2)} processed successfully!`);
+      
+      // Clear credit payment form
+      setSelectedCreditCustomer(null);
+      setCreditPaymentAmount("");
+      setCreditPaymentReference("");
+    } catch (error) {
+      console.error("Error processing credit payment:", error);
+      alert("Failed to process payment!");
+    }
+  };
 
   // Add product to cart
   const addToCart = (product: Product) => {
@@ -140,85 +251,7 @@ const POS = () => {
     } catch (error) {
       console.error("Error adding customer:", error);
       alert("Failed to add customer!");
-    }
-  };
-
-  // Process credit payment
-  const processCreditPayment = async () => {
-    if (!selectedCreditCustomer) {
-      alert("Please select a customer!");
-      return;
-    }
-
-    const paymentAmount = parseFloat(creditPaymentAmount);
-    if (!paymentAmount || paymentAmount <= 0) {
-      alert("Please enter a valid payment amount!");
-      return;
-    }
-
-    if (paymentAmount > (selectedCreditCustomer.creditBalance || 0)) {
-      alert("Payment amount cannot exceed outstanding balance!");
-      return;
-    }
-
-    if (creditPaymentMethod === "gcash" && !creditPaymentReference.trim()) {
-      alert("GCash reference number is required!");
-      return;
-    }
-
-    try {
-      // Find the most recent unpaid sale for this customer
-      const customerSales = sales
-        .filter(sale => sale.customerId?.id === selectedCreditCustomer.id && sale.paymentMethod === 'credit')
-        .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime());
-      
-      if (customerSales.length === 0) {
-        alert("No credit sales found for this customer!");
-        return;
-      }
-
-      // Use the most recent credit sale for payment reference
-      const targetSale = customerSales[0];
-
-      // Create payment record
-      const paymentData: any = {
-        saleId: doc(db, "sales", targetSale.id),
-        customerId: doc(db, "customers", selectedCreditCustomer.id),
-        amount: paymentAmount,
-        date: Timestamp.now(),
-        paymentMethod: creditPaymentMethod,
-      };
-
-      // Add reference based on payment method
-      if (creditPaymentMethod === "gcash" && creditPaymentReference.trim()) {
-        paymentData.gcashReferenceNumber = creditPaymentReference.trim();
-      } else if (creditPaymentMethod === "transfer" && creditPaymentReference.trim()) {
-        paymentData.referenceCode = creditPaymentReference.trim();
-      } else if (creditPaymentMethod === "check" && creditPaymentReference.trim()) {
-        paymentData.checkNumber = creditPaymentReference.trim();
-      }
-
-      // Add payment to database
-      await addPayment(paymentData);
-
-      // Update customer credit balance
-      const newCreditBalance = (selectedCreditCustomer.creditBalance || 0) - paymentAmount;
-      await updateDoc(doc(db, "customers", selectedCreditCustomer.id), {
-        creditBalance: newCreditBalance,
-      });
-
-      alert(`Payment of ₱${paymentAmount.toFixed(2)} processed successfully!`);
-      
-      // Clear credit payment form
-      setSelectedCreditCustomer(null);
-      setCreditPaymentAmount("");
-      setCreditPaymentReference("");
-      setShowCreditPayment(false);
-    } catch (error) {
-      console.error("Error processing credit payment:", error);
-      alert("Failed to process payment!");
-    }
-  };
+    }  };
 
   // Process sale
   const processSale = async () => {
@@ -318,7 +351,6 @@ const POS = () => {
   if (productsLoading || customersLoading) {
     return <div className="pos-loading">Loading POS system...</div>;
   }
-
   return (
     <div className="pos-container">
       {/* Header */}
@@ -335,6 +367,9 @@ const POS = () => {
           </div>
         </div>
       </div>
+
+      {/* Render different sections based on current selection */}
+      {currentSection === "pos" && (
 
       <div className="pos-main">
         {/* Products Section */}
@@ -529,140 +564,137 @@ const POS = () => {
               </div>
             )}
 
-            {/* Process Sale Button */}
-            <button
+            {/* Process Sale Button */}            <button
               className="process-sale-btn"
               onClick={processSale}
               disabled={cart.length === 0}
             >
               Process Sale
-            </button>
-          </div>        </div>
-      </div>
-
-      {/* Credit Payment Section */}
-      <div className="pos-credit-payment">
-        <div className="credit-payment-header">
-          <h2>Credit Payments</h2>
-          <button 
-            className="toggle-credit-payment-btn"
-            onClick={() => setShowCreditPayment(!showCreditPayment)}
-          >
-            {showCreditPayment ? 'Hide' : 'Show'} Credit Payments
-          </button>
+            </button>          </div>
         </div>
+      </div>      )}
 
-        {showCreditPayment && (
+      {/* Credit Payments Section */}
+      {currentSection === "credit-payments" && (
+        <div className="pos-content-section">
+          <div className="section-header">
+            <h2>Credit Payments</h2>
+            <p>Process payments for credit sales</p>
+          </div>
+
           <div className="credit-payment-form">
-            <div className="customer-with-credit-section">
-              <label>Customer with Outstanding Balance:</label>
-              <select
-                value={selectedCreditCustomer?.id || ""}
-                onChange={(e) => {
-                  const customer = customersWithCredit.find(c => c.id === e.target.value);
-                  setSelectedCreditCustomer(customer || null);
-                }}
-              >
-                <option value="">Select customer...</option>
-                {customersWithCredit.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name} - Outstanding: ₱{(customer.creditBalance || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="form-grid">
+              {/* Customer Selection */}
+              <div className="form-group">
+                <label>Customer with Outstanding Balance:</label>
+                <select
+                  value={selectedCreditCustomer?.id || ""}
+                  onChange={(e) => {
+                    const customer = customersWithCredit.find(c => c.id === e.target.value);
+                    setSelectedCreditCustomer(customer || null);
+                  }}
+                >
+                  <option value="">Select customer...</option>
+                  {customersWithCredit.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name} - Outstanding: ₱{(customer.creditBalance || 0).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {selectedCreditCustomer && (
-              <>
-                <div className="outstanding-balance">
-                  <h3>Outstanding Balance: ₱{(selectedCreditCustomer.creditBalance || 0).toFixed(2)}</h3>
-                </div>
-
-                <div className="credit-payment-amount">
-                  <label>Payment Amount:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max={selectedCreditCustomer.creditBalance || 0}
-                    value={creditPaymentAmount}
-                    onChange={(e) => setCreditPaymentAmount(e.target.value)}
-                    placeholder="Enter payment amount"
-                  />
-                </div>
-
-                <div className="credit-payment-method">
-                  <label>Payment Method:</label>
-                  <div className="payment-options">
-                    <label>
-                      <input
-                        type="radio"
-                        value="cash"
-                        checked={creditPaymentMethod === "cash"}
-                        onChange={(e) => setCreditPaymentMethod(e.target.value as "cash")}
-                      />
-                      Cash
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        value="gcash"
-                        checked={creditPaymentMethod === "gcash"}
-                        onChange={(e) => setCreditPaymentMethod(e.target.value as "gcash")}
-                      />
-                      GCash
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        value="transfer"
-                        checked={creditPaymentMethod === "transfer"}
-                        onChange={(e) => setCreditPaymentMethod(e.target.value as "transfer")}
-                      />
-                      Bank Transfer
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        value="check"
-                        checked={creditPaymentMethod === "check"}
-                        onChange={(e) => setCreditPaymentMethod(e.target.value as "check")}
-                      />
-                      Check
-                    </label>
+              {selectedCreditCustomer && (
+                <>
+                  <div className="outstanding-balance">
+                    <h3>Outstanding Balance: ₱{(selectedCreditCustomer.creditBalance || 0).toFixed(2)}</h3>
                   </div>
-                </div>
 
-                {(creditPaymentMethod === "gcash" || creditPaymentMethod === "transfer" || creditPaymentMethod === "check") && (
-                  <div className="credit-payment-reference">
-                    <label>
-                      {creditPaymentMethod === "gcash" ? "GCash Reference:" : 
-                       creditPaymentMethod === "transfer" ? "Transfer Reference:" : 
-                       "Check Number:"}
-                    </label>
+                  <div className="form-group">
+                    <label>Payment Amount:</label>
                     <input
-                      type="text"
-                      value={creditPaymentReference}
-                      onChange={(e) => setCreditPaymentReference(e.target.value)}
-                      placeholder={`Enter ${creditPaymentMethod === "gcash" ? "GCash reference" : 
-                                            creditPaymentMethod === "transfer" ? "transfer reference" : 
-                                            "check number"}`}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={selectedCreditCustomer.creditBalance || 0}
+                      value={creditPaymentAmount}
+                      onChange={(e) => setCreditPaymentAmount(e.target.value)}
+                      placeholder="Enter payment amount"
                     />
                   </div>
-                )}
 
-                <button
-                  className="process-credit-payment-btn"
-                  onClick={processCreditPayment}
-                  disabled={!creditPaymentAmount || parseFloat(creditPaymentAmount) <= 0}
-                >
-                  Process Payment
-                </button>
-              </>
-            )}
+                  <div className="form-group">
+                    <label>Payment Method:</label>
+                    <div className="payment-options">
+                      <label>
+                        <input
+                          type="radio"
+                          value="cash"
+                          checked={creditPaymentMethod === "cash"}
+                          onChange={(e) => setCreditPaymentMethod(e.target.value as "cash")}
+                        />
+                        Cash
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          value="gcash"
+                          checked={creditPaymentMethod === "gcash"}
+                          onChange={(e) => setCreditPaymentMethod(e.target.value as "gcash")}
+                        />
+                        GCash
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          value="transfer"
+                          checked={creditPaymentMethod === "transfer"}
+                          onChange={(e) => setCreditPaymentMethod(e.target.value as "transfer")}
+                        />
+                        Bank Transfer
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          value="check"
+                          checked={creditPaymentMethod === "check"}
+                          onChange={(e) => setCreditPaymentMethod(e.target.value as "check")}
+                        />
+                        Check
+                      </label>
+                    </div>
+                  </div>
+
+                  {(creditPaymentMethod === "gcash" || creditPaymentMethod === "transfer" || creditPaymentMethod === "check") && (
+                    <div className="form-group">
+                      <label>
+                        {creditPaymentMethod === "gcash" ? "GCash Reference:" : 
+                         creditPaymentMethod === "transfer" ? "Transfer Reference:" : 
+                         "Check Number:"}
+                      </label>
+                      <input
+                        type="text"
+                        value={creditPaymentReference}
+                        onChange={(e) => setCreditPaymentReference(e.target.value)}
+                        placeholder={`Enter ${creditPaymentMethod === "gcash" ? "GCash reference" : 
+                                              creditPaymentMethod === "transfer" ? "transfer reference" : 
+                                              "check number"}`}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    className="process-payment-btn"
+                    onClick={processCreditPayment}
+                    disabled={!creditPaymentAmount || parseFloat(creditPaymentAmount) <= 0}
+                  >
+                    Process Payment
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Customer Form Modal */}
       {showCustomerForm && (

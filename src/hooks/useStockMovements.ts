@@ -5,7 +5,6 @@ import {
   query, 
   orderBy, 
   onSnapshot,
-  doc,
   Timestamp 
 } from 'firebase/firestore'
 import { db } from '../firebaseConfig'

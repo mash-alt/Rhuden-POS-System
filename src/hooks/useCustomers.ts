@@ -33,7 +33,8 @@ export const useCustomers = () => {
             id: doc.id,
             name: data.name,
             contact: data.contact || '',
-            creditBalance: data.creditBalance || 0
+            creditBalance: data.creditBalance || 0,
+            creditAgreements: data.creditAgreements || []
           })
         })
         
@@ -54,7 +55,8 @@ export const useCustomers = () => {
     try {
       const customer = {
         ...customerData,
-        creditBalance: customerData.creditBalance || 0
+        creditBalance: customerData.creditBalance || 0,
+        creditAgreements: customerData.creditAgreements || []
       }
       
       await addDoc(collection(db, 'customers'), customer)

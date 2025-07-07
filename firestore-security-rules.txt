@@ -72,5 +72,10 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow read, write: if request.auth != null;
     }
+    
+    // Credit Agreements collection - authenticated users can read/write
+    match /creditAgreements/{creditAgreementId} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

@@ -77,22 +77,24 @@ export type CreateSale = Omit<Sale, 'id'>;
 // Payment (for all payment types including credit repayments)
 export type Payment = {
   id: string;
-  saleId: DocumentReference;        // Reference to Sale document
-  customerId?: DocumentReference;   // Reference to Customer document (optional for cash sales)
+  saleId?: DocumentReference;          // Reference to Sale document (optional for credit payments)
+  creditAgreementId?: string;          // Reference to Credit Agreement (for credit payments)
+  customerId?: DocumentReference;      // Reference to Customer document (optional for cash sales)
   amount: number;
   date: Timestamp;
   paymentMethod: 'cash' | 'gcash' | 'transfer' | 'check';
+  paymentType: 'sale' | 'credit_payment'; // Type of payment
   
   // Payment reference tracking
-  referenceCode?: string;           // Required for GCash, optional for cash
-  receiptNumber?: string;           // Internal receipt/transaction number
+  referenceCode?: string;              // Required for GCash, optional for cash
+  receiptNumber?: string;              // Internal receipt/transaction number
   
   // GCash-specific fields
-  gcashReferenceNumber?: string;    // GCash transaction reference
-  gcashSenderNumber?: string;       // Sender's mobile number (if needed)
+  gcashReferenceNumber?: string;       // GCash transaction reference
+  gcashSenderNumber?: string;          // Sender's mobile number (if needed)
   
   // Check-specific fields
-  checkNumber?: string;             // Check number (for check payments)
+  checkNumber?: string;                // Check number (for check payments)
   
   notes?: string;
 }
@@ -112,12 +114,39 @@ export type User = {
 // User creation type (without ID for Firestore)
 export type CreateUser = Omit<User, 'id'>;
 
-// Customer (with credit tracking)
+// Credit Agreement (individual credit record)
+export type CreditAgreement = {
+  id: string;
+  saleId?: DocumentReference;          // Reference to the sale that created this credit
+  principalAmount: number;             // Original credit amount
+  remainingBalance: number;            // Current outstanding balance
+  monthlyPayment: number;              // Fixed monthly payment amount
+  totalTerms: number;                  // Total number of payment terms
+  remainingTerms: number;              // Remaining payment terms
+  startDate: Timestamp;                // When the credit agreement started
+  dueDate: Timestamp;                  // When the credit should be fully paid
+  nextPaymentDue: Timestamp;           // Next payment due date
+  status: 'active' | 'completed' | 'overdue' | 'defaulted';
+  paymentHistory: string[];            // Array of payment IDs for this credit
+  notes?: string;
+  createdAt: Timestamp;
+}
+
+// Credit Agreement creation type (without ID for Firestore)
+export type CreateCreditAgreement = Omit<CreditAgreement, 'id'>;
+
+// Customer (with enhanced credit tracking)
 export type Customer = {
   id: string;
   name: string;
   contact?: string;
-  creditBalance?: number;  // Outstanding credit
+  address?: string;
+  creditBalance: number;          // Total outstanding credit across all agreements
+  creditAgreements: CreditAgreement[]; // Array of all credit agreements
+  //creditScore?: 'excellent' | 'good' | 'fair' | 'poor'; // Credit rating
+  joinDate?: Timestamp;
+  lastPaymentDate?: Timestamp;
+  //notes?: string;
 }
 
 // Customer creation type (without ID for Firestore)
@@ -151,3 +180,4 @@ export type CreateStockMovement = Omit<StockMovement, 'id'>;
 // users
 // customers
 // stockMovements
+// creditAgreements

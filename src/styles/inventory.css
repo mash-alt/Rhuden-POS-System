@@ -341,6 +341,43 @@
   box-shadow: none;
 }
 
+/* Button Group and Export Button */
+.button-group {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.export-button {
+  background-color: #4e73df;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-button:hover {
+  background-color: #3756a4;
+}
+
+.export-button:before {
+  content: "↓";
+  font-weight: bold;
+}
+
+/* Search Label in Credit Section */
+.search-label {
+  font-size: 0.9rem;
+  color: #555;
+  font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .transaction-history-grid {

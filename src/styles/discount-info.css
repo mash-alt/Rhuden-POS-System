@@ -1,0 +1,19 @@
+/* Discount info in transaction description */
+.discount-info {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e5e7eb;
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+}
+
+.discount-info span {
+  margin-top: 0.25rem;
+}
+
+.discount-info span:last-child {
+  color: #ef4444;
+  font-weight: 500;
+}

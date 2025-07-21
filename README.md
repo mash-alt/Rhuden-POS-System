@@ -52,3 +52,57 @@ export default tseslint.config({
   },
 })
 ```
+
+## Database Management Scripts
+
+The project includes several utility scripts for managing the Firebase Firestore database:
+
+### Setup Environment Variables
+
+1. Copy the `.env.example` file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit the `.env` file with your Firebase project credentials.
+
+   For detailed instructions, see [ENV-SETUP.md](ENV-SETUP.md)
+
+### Available Database Scripts
+
+- **Populate Database**: Add sample data for testing
+  ```bash
+  npm run populate-db
+  ```
+
+- **Prepare Presentation Data**: Set up data for demonstrations
+  ```bash
+  npm run prepare-presentation
+  ```
+
+- **Clear Database**: Remove all documents except user accounts
+  ```bash
+  npm run clear-db
+  ```
+
+- **Clear Database (Batch Version)**: More efficient version for large collections
+  ```bash
+  npm run clear-db-batch
+  ```
+
+- **Clear Database (With Auth)**: Combines login and clearing in one step
+  ```bash
+  npm run clear-db-auth
+  ```
+
+- **Clear Database (Preserve Structure)**: Clears data but keeps collection structure
+  ```bash
+  npm run clear-db-preserve
+  ```
+
+- **Admin Login**: Log in as admin user to get proper permissions
+  ```bash
+  npm run admin-login
+  ```
+
+For more detailed information, see `src/populateScripts/README-database-scripts.md`.

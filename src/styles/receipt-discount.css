@@ -1,0 +1,32 @@
+/* Receipt discount styles */
+
+/* Discount info on receipt items */
+.item-discount-info {
+  font-size: 9px;
+  color: #dc3545;
+  margin-top: 2px;
+}
+
+/* Original price (shown as strikethrough) */
+.original-price {
+  text-decoration: line-through;
+  color: #777;
+  font-size: 10px;
+}
+
+/* Discounted price */
+.discounted-price {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+/* Discount row in receipt summary */
+.receipt-summary .discount {
+  color: #dc3545;
+}
+
+/* Additional style for receipt discount totals */
+.receipt-discount-total {
+  font-style: italic;
+  color: #dc3545;
+}

@@ -31,9 +31,11 @@ export const usePayments = () => {
             id: doc.id,
             saleId: data.saleId,
             customerId: data.customerId,
+            creditAgreementId: data.creditAgreementId,
             amount: data.amount,
             date: data.date,
             paymentMethod: data.paymentMethod,
+            paymentType: data.paymentType || 'sale', // Default to 'sale' if not specified
             referenceCode: data.referenceCode,
             receiptNumber: data.receiptNumber,
             gcashReferenceNumber: data.gcashReferenceNumber,
@@ -73,9 +75,15 @@ export const usePayments = () => {
   }
 
   const getPaymentsBySale = (saleId: string) => {
-    return payments.filter(payment => 
-      typeof payment.saleId === 'string' ? payment.saleId === saleId : payment.saleId.id === saleId
-    )
+    return payments.filter(payment => {
+      // Skip payments without a saleId
+      if (!payment.saleId) return false;
+      
+      // Check if saleId matches
+      return typeof payment.saleId === 'string' 
+        ? payment.saleId === saleId 
+        : payment.saleId.id === saleId;
+    })
   }
 
   const getPaymentsByCustomer = (customerId: string) => {

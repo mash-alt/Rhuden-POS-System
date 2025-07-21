@@ -1,0 +1,65 @@
+/* Table enhancements - Add to TransactionHistory.css */
+
+/* Money values styling */
+.amount-cell .amount {
+  font-weight: 600;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.sale-amount {
+  color: #047857;
+}
+
+.payment-amount {
+  color: #4f46e5;
+}
+
+.original-amount {
+  text-decoration: line-through;
+  color: #9ca3af;
+  font-weight: normal;
+}
+
+.discount-amount {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Date styling */
+.date-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Alternating row colors for better readability */
+.transaction-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* Empty state styling improvements */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.empty-state p {
+  font-size: 0.875rem;
+  max-width: 300px;
+}

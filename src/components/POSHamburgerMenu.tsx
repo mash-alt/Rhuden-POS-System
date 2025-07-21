@@ -20,6 +20,12 @@ const POSHamburgerMenu: React.FC<POSHamburgerMenuProps> = ({ onSectionChange }) 
 
   const menuItems = [
     {
+      id: 'pos',
+      label: 'Point of Sale',
+      icon: '🏪',
+      description: 'Process new sales transactions'
+    },
+    {
       id: 'transaction-history',
       label: 'Transaction History',
       icon: '🧾',

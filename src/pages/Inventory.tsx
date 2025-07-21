@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Timestamp, doc, updateDoc } from "firebase/firestore";
+import { Timestamp, doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import Table from "../components/Table";
 import Form from "../components/Form";
@@ -10,24 +10,26 @@ import { useCategories } from "../hooks/useCategories";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { useStockMovements } from "../hooks/useStockMovements";
 import useSales from "../hooks/useSales";
-import { usePayments } from "../hooks/usePayments";
 import useCustomers from "../hooks/useCustomers";
+import { downloadCSV } from "../utils/exportCsv";
 import type { Product, Category, Supplier, StockMovement, Customer } from "../types";
 import {
   productTableColumns,
   createCategoryTableColumns,
   createSupplierTableColumns,
   stockMovementTableColumns,
+  customerTableColumns,
   productFormSections,
   categoryFormSections,
   supplierFormSections,
   stockMovementFormSections,
+  customerFormSections,
 } from "../config/tableConfig.tsx";
 import "../styles/inventory.css";
 
 const Inventory = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, currentUser } = useAuth();
   const {
     products,
     loading,
@@ -61,29 +63,28 @@ const Inventory = () => {
     addStockMovement,
     searchStockMovements,
   } = useStockMovements();
-  // Transaction History and Credit Payment hooks
+  // Transaction History hooks
   const { sales } = useSales();
-  const { addPayment } = usePayments();
-  const { customers, loading: customersLoading } = useCustomers();
+  const { customers, loading: customersLoading, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const [searchTerm, setSearchTerm] = useState("");
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
   const [stockMovementSearchTerm, setStockMovementSearchTerm] = useState("");
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [currentSection, setCurrentSection] = useState("products");
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);  const [showStockMovementForm, setShowStockMovementForm] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);  const [showStockMovementForm, setShowStockMovementForm] = useState(false);
   const [editingStockMovement, setEditingStockMovement] =
     useState<StockMovement | null>(null);
 
-  // Credit payment state
-  const [creditPaymentAmount, setCreditPaymentAmount] = useState<string>("");
-  const [creditPaymentMethod, setCreditPaymentMethod] = useState<"cash" | "gcash" | "transfer" | "check">("cash");
-  const [creditPaymentReference, setCreditPaymentReference] = useState("");
-  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<Customer | null>(null);
+  // Form validation state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   // Use the enhanced search functionality
   const filteredProducts = searchProducts(searchTerm);
@@ -114,6 +115,29 @@ const Inventory = () => {
   const filteredCategories = searchCategories(categorySearchTerm);
   const filteredSuppliers = searchSuppliers(supplierSearchTerm);
   const filteredStockMovements = searchStockMovements(stockMovementSearchTerm);
+
+  // Customer search functionality
+  const searchCustomers = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      return customers;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+
+    return customers.filter((customer) => {
+      // Search in name
+      if (customer.name.toLowerCase().includes(term)) return true;
+
+      // Search in contact
+      if (customer.contact && customer.contact.toLowerCase().includes(term)) return true;
+
+      // Search in address
+      if (customer.address && customer.address.toLowerCase().includes(term)) return true;
+
+      return false;
+    });
+  };
+  const filteredCustomers = searchCustomers(customerSearchTerm);
 
   // Helper functions for form configurations
   const getProductFormSections = () => {
@@ -169,15 +193,74 @@ const Inventory = () => {
   };
   const handleProductFormSubmit = async (productData: Omit<Product, "id">) => {
     try {
+      // Validate required fields
+      const errors: {[key: string]: string} = {};
+      if (!productData.name?.trim()) {
+        errors.name = "Product name is required";
+      }
+      if (!productData.sku?.trim()) {
+        errors.sku = "SKU is required";
+      }
+      if (productData.price === undefined || productData.price < 0) {
+        errors.price = "Valid price is required";
+      }
+      if (productData.cost === undefined || productData.cost < 0) {
+        errors.cost = "Valid cost is required";
+      }
+      if (!productData.unit?.trim()) {
+        errors.unit = "Unit of measurement is required";
+      }
+      
+      // If not active, show a warning but don't block submission
+      if (productData.active === false) {
+        const confirmInactive = window.confirm(
+          "Warning: This product is marked as INACTIVE and won't appear in sales. Are you sure you want to continue?"
+        );
+        if (!confirmInactive) {
+          return; // Cancel submission if user doesn't confirm
+        }
+      }
+
+      // If there are validation errors, show them and don't submit
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        alert("Please correct the following errors:\n" + Object.values(errors).join("\n"));
+        return;
+      }
+      
       if (editingProduct) {
         // Update existing product
         await updateProduct(editingProduct.id, productData);
       } else {
-        // Add new product
-        await addProduct(productData);
+        // Add new product - now returns the new product ID
+        const newProductId = await addProduct(productData);
+        
+        // Create a stock movement record for the new product
+        if (newProductId && productData.stockQuantity && productData.stockQuantity > 0) {
+          try {
+            // Add the stock movement directly to Firestore
+            await addDoc(collection(db, 'stockMovements'), {
+              productId: doc(db, 'products', newProductId),
+              type: "in",
+              quantity: productData.stockQuantity,
+              reason: "adjustment", 
+              reference: `Initial inventory`,
+              notes: `Initial stock for new product ${productData.name} (${productData.sku})`,
+              date: Timestamp.now(),
+              userId: doc(db, 'users', currentUser?.uid || 'system'),
+              previousStock: 0,
+              newStock: productData.stockQuantity
+            });
+            
+            console.log('Stock movement created for new product with ID:', newProductId);
+          } catch (error) {
+            console.error('Error creating stock movement for new product:', error);
+          }
+        }
       }
       setShowProductForm(false);
       setEditingProduct(null);
+      setFormErrors({});
     } catch (error) {
       console.error("Error saving product:", error);
       throw error;
@@ -210,6 +293,29 @@ const Inventory = () => {
     categoryData: Omit<Category, "id">
   ) => {
     try {
+      // Validate required fields
+      const errors: {[key: string]: string} = {};
+      if (!categoryData.name?.trim()) {
+        errors.name = "Category name is required";
+      }
+      
+      // If not active, show a warning but don't block submission
+      if (categoryData.active === false) {
+        const confirmInactive = window.confirm(
+          "Warning: This category is marked as INACTIVE and products in this category won't appear in sales. Are you sure you want to continue?"
+        );
+        if (!confirmInactive) {
+          return; // Cancel submission if user doesn't confirm
+        }
+      }
+
+      // If there are validation errors, show them and don't submit
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        alert("Please correct the following errors:\n" + Object.values(errors).join("\n"));
+        return;
+      }
+      
       if (editingCategory) {
         // Update existing category
         await updateCategory(editingCategory.id, categoryData);
@@ -219,6 +325,7 @@ const Inventory = () => {
       }
       setShowCategoryForm(false);
       setEditingCategory(null);
+      setFormErrors({});
     } catch (error) {
       console.error("Error saving category:", error);
       throw error;
@@ -250,6 +357,29 @@ const Inventory = () => {
     supplierData: Omit<Supplier, "id">
   ) => {
     try {
+      // Validate required fields
+      const errors: {[key: string]: string} = {};
+      if (!supplierData.name?.trim()) {
+        errors.name = "Supplier name is required";
+      }
+      
+      // If not active, show a warning but don't block submission
+      if (supplierData.active === false) {
+        const confirmInactive = window.confirm(
+          "Warning: This supplier is marked as INACTIVE and may not appear in some lists. Are you sure you want to continue?"
+        );
+        if (!confirmInactive) {
+          return; // Cancel submission if user doesn't confirm
+        }
+      }
+
+      // If there are validation errors, show them and don't submit
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        alert("Please correct the following errors:\n" + Object.values(errors).join("\n"));
+        return;
+      }
+      
       if (editingSupplier) {
         // Update existing supplier
         await updateSupplier(editingSupplier.id, supplierData);
@@ -259,6 +389,7 @@ const Inventory = () => {
       }
       setShowSupplierForm(false);
       setEditingSupplier(null);
+      setFormErrors({});
     } catch (error) {
       console.error("Error saving supplier:", error);
       throw error;
@@ -267,6 +398,76 @@ const Inventory = () => {
   const handleSupplierFormCancel = () => {
     setShowSupplierForm(false);
     setEditingSupplier(null);
+  };
+
+  // Customer handlers
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setShowCustomerForm(true);
+  };
+
+  const handleDeleteCustomer = (customerId: string) => {
+    if (window.confirm("Are you sure you want to delete this customer?")) {
+      // Check if customer has outstanding credit (credit management is handled in POS module)
+      const customerToDelete = customers.find(c => c.id === customerId);
+      if (customerToDelete && (customerToDelete.creditBalance || 0) > 0) {
+        alert("Cannot delete customer with outstanding credit balance! Please clear the balance in the POS module first.");
+        return;
+      }
+      deleteCustomer(customerId);
+    }
+  };
+
+  const handleAddCustomer = () => {
+    setEditingCustomer(null);
+    setShowCustomerForm(true);
+  };
+
+  const handleCustomerFormSubmit = async (customerData: Omit<Customer, "id">) => {
+    try {
+      // Validate required fields
+      const errors: {[key: string]: string} = {};
+      if (!customerData.name?.trim()) {
+        errors.name = "Customer name is required";
+      }
+      
+      // If there are validation errors, show them and don't submit
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        alert("Please correct the following errors:\n" + Object.values(errors).join("\n"));
+        return;
+      }
+      
+      if (editingCustomer) {
+        // Update existing customer - only allow updating name, contact, and address
+        const updateData = {
+          name: customerData.name,
+          contact: customerData.contact,
+          address: customerData.address,
+        };
+        await updateCustomer(editingCustomer.id, updateData);
+      } else {
+        // Add new customer with default credit values (needed for compatibility with POS module)
+        const newCustomerData = {
+          ...customerData,
+          creditBalance: 0,
+          creditAgreements: [],
+          joinDate: Timestamp.now(),
+        };
+        await addCustomer(newCustomerData);
+      }
+      setShowCustomerForm(false);
+      setEditingCustomer(null);
+      setFormErrors({});
+    } catch (error) {
+      console.error("Error saving customer:", error);
+      throw error;
+    }
+  };
+
+  const handleCustomerFormCancel = () => {
+    setShowCustomerForm(false);
+    setEditingCustomer(null);
   };
 
   // Stock Movement handlers
@@ -279,11 +480,31 @@ const Inventory = () => {
     stockMovementData: Omit<StockMovement, "id">
   ) => {
     try {
+      // Validate required fields
+      const errors: {[key: string]: string} = {};
+      if (!stockMovementData.productId) {
+        errors.productId = "Product selection is required";
+      }
+      if (!stockMovementData.type?.trim()) {
+        errors.type = "Movement type is required";
+      }
+      if (stockMovementData.quantity === undefined || stockMovementData.quantity === 0) {
+        errors.quantity = "Quantity cannot be zero";
+      }
+      
+      // If there are validation errors, show them and don't submit
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        alert("Please correct the following errors:\n" + Object.values(errors).join("\n"));
+        return;
+      }
+      
       // Note: In a real application, you would need to handle product selection
       // and calculate previous/new stock levels properly
       await addStockMovement(stockMovementData);
       setShowStockMovementForm(false);
       setEditingStockMovement(null);
+      setFormErrors({});
     } catch (error) {
       console.error("Error saving stock movement:", error);
       throw error;
@@ -292,81 +513,7 @@ const Inventory = () => {
   const handleStockMovementFormCancel = () => {
     setShowStockMovementForm(false);
     setEditingStockMovement(null);
-  };  // Credit Payment handlers
-  const processCreditPayment = async () => {
-    if (!selectedCreditCustomer || !creditPaymentAmount) {
-      alert("Please select a customer and enter a payment amount.");
-      return;
-    }
-
-    const amount = parseFloat(creditPaymentAmount);
-    if (amount <= 0) {
-      alert("Please enter a valid payment amount.");
-      return;
-    }
-
-    try {
-      // Get customer's credit sales to find a reference sale
-      const customerSales = sales.filter(
-        (sale) => {
-          const customerIdMatch = sale.customerId && 
-            (typeof sale.customerId === 'string' ? 
-              sale.customerId === selectedCreditCustomer.id : 
-              sale.customerId.id === selectedCreditCustomer.id);
-          
-          return customerIdMatch && 
-                 sale.paymentMethod === "credit" &&
-                 sale.creditStatus !== "paid";
-        }
-      );
-
-      if (customerSales.length === 0) {
-        alert("No outstanding credit sales found for this customer.");
-        return;
-      }
-
-      // Use the most recent credit sale for payment reference
-      const targetSale = customerSales[0];
-
-      // Create payment record
-      const paymentData: any = {
-        saleId: doc(db, "sales", targetSale.id),
-        customerId: doc(db, "customers", selectedCreditCustomer.id),
-        amount: amount,
-        date: Timestamp.now(),
-        paymentMethod: creditPaymentMethod,
-      };
-
-      // Add reference based on payment method
-      if (creditPaymentMethod === "gcash" && creditPaymentReference.trim()) {
-        paymentData.gcashReferenceNumber = creditPaymentReference.trim();
-      } else if (creditPaymentMethod === "transfer" && creditPaymentReference.trim()) {
-        paymentData.referenceCode = creditPaymentReference.trim();
-      } else if (creditPaymentMethod === "check" && creditPaymentReference.trim()) {
-        paymentData.checkNumber = creditPaymentReference.trim();
-      }
-
-      // Add payment to database
-      await addPayment(paymentData);
-
-      // Update customer credit balance
-      const newCreditBalance = (selectedCreditCustomer.creditBalance || 0) - amount;
-      await updateDoc(doc(db, "customers", selectedCreditCustomer.id), {
-        creditBalance: newCreditBalance,
-      });
-
-      alert(`Payment of ₱${amount.toFixed(2)} processed successfully!`);
-
-      // Reset form
-      setCreditPaymentAmount("");
-      setCreditPaymentMethod("cash");
-      setCreditPaymentReference("");
-      setSelectedCreditCustomer(null);
-    } catch (error) {
-      console.error("Error processing credit payment:", error);
-      alert("Failed to process credit payment. Please try again.");
-    }
-  };
+  };  // No Credit Payment handlers since they've been moved to POS
 
   // const handleSectionChange = (section: string) => {
   //   setCurrentSection(section);
@@ -464,6 +611,17 @@ const Inventory = () => {
           isEdit={!!editingStockMovement}
         />
       )}
+      {/* Customer Form Modal */}
+      {showCustomerForm && (
+        <Form<Customer>
+          title="Customer"
+          sections={customerFormSections}
+          onSubmit={handleCustomerFormSubmit}
+          onCancel={handleCustomerFormCancel}
+          initialData={editingCustomer || undefined}
+          isEdit={!!editingCustomer}
+        />
+      )}
       <div className="page-header">
         <h1>Inventory Management</h1>
         <p>Manage your construction materials and equipment</p>
@@ -483,12 +641,22 @@ const Inventory = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
-                />              </div>
-              {isAdmin && (
-                <button onClick={handleAddProduct} className="add-button">
-                  Add Product
+                />              
+              </div>
+              <div className="button-group">
+                <button 
+                  onClick={() => downloadCSV(filteredProducts, 'products.csv', ['createdAt'])} 
+                  className="export-button"
+                  title="Export to CSV"
+                >
+                  Export CSV
                 </button>
-              )}
+                {isAdmin && (
+                  <button onClick={handleAddProduct} className="add-button">
+                    Add Product
+                  </button>
+                )}
+              </div>
             </div>
             {/* Show search results count */}
             {searchTerm && (
@@ -557,12 +725,22 @@ const Inventory = () => {
                   value={categorySearchTerm}
                   onChange={(e) => setCategorySearchTerm(e.target.value)}
                   className="search-input"
-                />              </div>
-              {isAdmin && (
-                <button onClick={handleAddCategory} className="add-button">
-                  Add Category
+                />              
+              </div>
+              <div className="button-group">
+                <button 
+                  onClick={() => downloadCSV(filteredCategories, 'categories.csv')} 
+                  className="export-button"
+                  title="Export to CSV"
+                >
+                  Export CSV
                 </button>
-              )}
+                {isAdmin && (
+                  <button onClick={handleAddCategory} className="add-button">
+                    Add Category
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Show search results count */}
@@ -619,12 +797,22 @@ const Inventory = () => {
                   value={supplierSearchTerm}
                   onChange={(e) => setSupplierSearchTerm(e.target.value)}
                   className="search-input"
-                />              </div>
-              {isAdmin && (
-                <button onClick={handleAddSupplier} className="add-button">
-                  Add Supplier
+                />              
+              </div>
+              <div className="button-group">
+                <button 
+                  onClick={() => downloadCSV(filteredSuppliers, 'suppliers.csv')} 
+                  className="export-button"
+                  title="Export to CSV"
+                >
+                  Export CSV
                 </button>
-              )}
+                {isAdmin && (
+                  <button onClick={handleAddSupplier} className="add-button">
+                    Add Supplier
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Show search results count */}
@@ -683,9 +871,18 @@ const Inventory = () => {
                   className="search-input"
                 />
               </div>
-              <button onClick={handleAddStockMovement} className="add-button">
-                Add Movement
-              </button>
+              <div className="button-group">
+                <button 
+                  onClick={() => downloadCSV(filteredStockMovements, 'stock-movements.csv', ['userId', 'productId'])} 
+                  className="export-button"
+                  title="Export to CSV"
+                >
+                  Export CSV
+                </button>
+                <button onClick={handleAddStockMovement} className="add-button">
+                  Add Movement
+                </button>
+              </div>
             </div>
 
             {/* Show search results count */}
@@ -728,107 +925,75 @@ const Inventory = () => {
             </div>
           </div>        )}
 
-        {/* Credit Payments Section */}
-        {currentSection === "credit-payments" && (
+        {/* Customers Section */}
+        {currentSection === "customers" && (
           <div className="content-section">
             <div className="section-header">
-              <h2>Credit Payments</h2>
-              <p>Process payments for credit sales</p>
+              <h2>Customers</h2>
+              <p>Manage customer information</p>
             </div>
 
-            {customersLoading ? (
-              <div className="loading-message">Loading customers...</div>
-            ) : (
-              <div className="credit-payment-form">
-                <div className="form-grid">
-                  {/* Customer Selection */}
-                  <div className="form-group">
-                    <label>Select Customer:</label>
-                    <select
-                      value={selectedCreditCustomer?.id || ""}
-                      onChange={(e) => {
-                        const customer = customers.find((c) => c.id === e.target.value);
-                        setSelectedCreditCustomer(customer || null);
-                      }}
-                    >
-                      <option value="">Select a customer...</option>
-                      {customers
-                        .filter((customer) => (customer.creditBalance || 0) > 0)
-                        .map((customer) => (
-                          <option key={customer.id} value={customer.id}>
-                            {customer.name} - Balance: ₱{(customer.creditBalance || 0).toFixed(2)}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {/* Payment Amount */}
-                  <div className="form-group">
-                    <label>Payment Amount:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={selectedCreditCustomer?.creditBalance || 0}
-                      value={creditPaymentAmount}
-                      onChange={(e) => setCreditPaymentAmount(e.target.value)}
-                      placeholder="Enter payment amount"
-                    />
-                    {selectedCreditCustomer && (
-                      <small>
-                        Max: ₱{(selectedCreditCustomer.creditBalance || 0).toFixed(2)}
-                      </small>
-                    )}
-                  </div>
-
-                  {/* Payment Method */}
-                  <div className="form-group">
-                    <label>Payment Method:</label>
-                    <select
-                      value={creditPaymentMethod}
-                      onChange={(e) => setCreditPaymentMethod(e.target.value as any)}
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="gcash">GCash</option>
-                      <option value="transfer">Bank Transfer</option>
-                      <option value="check">Check</option>
-                    </select>
-                  </div>
-
-                  {/* Payment Reference */}
-                  {creditPaymentMethod !== "cash" && (
-                    <div className="form-group">
-                      <label>
-                        {creditPaymentMethod === "gcash" ? "GCash Reference:" :
-                         creditPaymentMethod === "transfer" ? "Transfer Reference:" :
-                         "Check Number:"}
-                      </label>
-                      <input
-                        type="text"
-                        value={creditPaymentReference}
-                        onChange={(e) => setCreditPaymentReference(e.target.value)}
-                        placeholder={`Enter ${creditPaymentMethod} reference`}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  className="process-payment-btn"
-                  onClick={processCreditPayment}
-                  disabled={
-                    !selectedCreditCustomer ||
-                    !creditPaymentAmount ||
-                    parseFloat(creditPaymentAmount) <= 0 ||
-                    parseFloat(creditPaymentAmount) > (selectedCreditCustomer?.creditBalance || 0)
-                  }
+            {/* Customer Controls */}
+            <div className="inventory-controls">
+              <div className="search-container">
+                <input
+                  type="text"
+                  placeholder="Search customers by name, contact, or address..."
+                  value={customerSearchTerm}
+                  onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              <div className="button-group">
+                <button 
+                  onClick={() => downloadCSV(filteredCustomers, 'customers.csv', ['joinDate', 'lastPaymentDate'])} 
+                  className="export-button"
+                  title="Export to CSV"
                 >
-                  Process Payment
+                  Export CSV
                 </button>
+                {isAdmin && (
+                  <button onClick={handleAddCustomer} className="add-button">
+                    Add Customer
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Show search results count */}
+            {customerSearchTerm && (
+              <div className="search-results-info">
+                Found {filteredCustomers.length} customer
+                {filteredCustomers.length !== 1 ? "s" : ""} matching "
+                {customerSearchTerm}"
               </div>
             )}
+
+            {/* Customers Table */}
+            <div className="content-section">
+              <div className="section-header">
+                <h2>Customers ({filteredCustomers.length})</h2>
+                <p>Manage your customer information</p>
+              </div>
+
+              {customersLoading ? (
+                <div className="loading-message">Loading customers...</div>
+              ) : (
+                <Table<Customer>
+                  data={filteredCustomers}
+                  columns={customerTableColumns}
+                  onEdit={isAdmin ? handleEditCustomer : undefined}
+                  onDelete={isAdmin ? handleDeleteCustomer : undefined}
+                  showActions={isAdmin}
+                  emptyMessage="No customers found"
+                  getItemId={(customer) => customer.id}
+                />
+              )}
+            </div>
           </div>
         )}
+
+        {/* Credit Payments section removed - now handled in the POS module */}
       </div>
     </div>
   );

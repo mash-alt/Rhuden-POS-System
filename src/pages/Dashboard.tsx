@@ -57,13 +57,23 @@ const Dashboard = () => {
   const filteredSales = getDateFilteredData(sales);
   const filteredPayments = getDateFilteredData(payments);
 
-  // Calculate metrics
+  // Calculate metrics - synced with transaction history calculation approach
+  // Total sales amount (all sales transactions)
   const totalSales = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);  const totalOutstanding = sales.reduce((sum, sale) => {
+  
+  // Total payments (all payments including credit payments)
+  const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  
+  // Calculate outstanding amount (sales amount minus payments)
+  const totalOutstanding = sales.reduce((sum, sale) => {
+    // Find all payments for this sale
     const salePayments = payments.filter((p: any) => {
       const saleId = typeof p.saleId === 'string' ? p.saleId : p.saleId?.id;
       return saleId === sale.id;
     });
+    
+    // For non-credit sales, use the sale's amountPaid field
+    // For credit sales, use the sum of payments
     const paidAmount = salePayments.reduce((pSum: number, p: any) => pSum + p.amount, 0);
     return sum + Math.max(0, sale.total - paidAmount);
   }, 0);
@@ -94,17 +104,20 @@ const Dashboard = () => {
         
         {/* Date Filter */}
         <div className="date-filter">
-          <select 
-            value={dateRange} 
-            onChange={(e) => setDateRange(e.target.value)}
-            className="date-select"
-          >
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="all">All Time</option>
-          </select>
+          <div className="custom-select-container">
+            <select 
+              value={dateRange} 
+              onChange={(e) => setDateRange(e.target.value)}
+              className="date-select"
+            >
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="all">All Time</option>
+            </select>
+            <span className="select-icon">📅</span>
+          </div>
         </div>
       </div>
 
@@ -114,8 +127,11 @@ const Dashboard = () => {
           <div className="metric-icon">💰</div>
           <div className="metric-content">
             <div className="metric-value">{formatCurrency(totalSales)}</div>
-            <div className="metric-label">Sales Revenue</div>
-            <div className="metric-count">{filteredSales.length} transactions</div>
+            <div className="metric-label">Total Sales Value</div>
+            <div className="metric-count">
+              {filteredSales.length} transaction{filteredSales.length !== 1 ? 's' : ''}
+              {dateRange !== 'all' && <span className="date-indicator">({dateRange})</span>}
+            </div>
           </div>
         </div>
 
@@ -124,7 +140,10 @@ const Dashboard = () => {
           <div className="metric-content">
             <div className="metric-value">{formatCurrency(totalPayments)}</div>
             <div className="metric-label">Payments Received</div>
-            <div className="metric-count">{filteredPayments.length} payments</div>
+            <div className="metric-count">
+              {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}
+              {dateRange !== 'all' && <span className="date-indicator">({dateRange})</span>}
+            </div>
           </div>
         </div>
 
@@ -132,8 +151,10 @@ const Dashboard = () => {
           <div className="metric-icon">⏰</div>
           <div className="metric-content">
             <div className="metric-value">{formatCurrency(totalOutstanding)}</div>
-            <div className="metric-label">Outstanding Amount</div>
-            <div className="metric-count">{creditCustomers.length} customers</div>
+            <div className="metric-label">Outstanding Credit</div>
+            <div className="metric-count">
+              {creditCustomers.length} customer{creditCustomers.length !== 1 ? 's' : ''} with balances
+            </div>
           </div>
         </div>
 
@@ -142,7 +163,7 @@ const Dashboard = () => {
           <div className="metric-content">
             <div className="metric-value">{formatCurrency(inventoryValue)}</div>
             <div className="metric-label">Inventory Value</div>
-            <div className="metric-count">{products.length} products</div>
+            <div className="metric-count">{products.length} active products</div>
           </div>
         </div>
       </div>
@@ -172,14 +193,6 @@ const Dashboard = () => {
             <div className="action-content">
               <h3>View Transactions</h3>
               <p>Browse sales and payments</p>
-            </div>
-          </Link>
-
-          <Link to="/customers" className="action-card customer-action">
-            <div className="action-icon">👥</div>
-            <div className="action-content">
-              <h3>Manage Customers</h3>
-              <p>View customer accounts</p>
             </div>
           </Link>
         </div>
@@ -247,12 +260,15 @@ const Dashboard = () => {
           <h2>📈 Recent Sales</h2>
           <div className="recent-list">
             {recentSales.length === 0 ? (
-              <div className="no-data">No recent sales</div>
+              <div className="no-data">
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
+                No recent sales found
+              </div>
             ) : (
               recentSales.map(sale => (
                 <div key={sale.id} className="recent-item">
                   <div className="recent-info">
-                    <div className="recent-id">Sale #{sale.id.slice(-6)}</div>
+                    <div className="recent-id">Sale #{sale.id.slice(-6).toUpperCase()}</div>
                     <div className="recent-date">{formatDate(sale.date)}</div>
                   </div>
                   <div className="recent-amount">{formatCurrency(sale.total)}</div>
@@ -263,7 +279,10 @@ const Dashboard = () => {
               ))
             )}
           </div>
-          <Link to="/transactions" className="view-all-link">View All Transactions →</Link>
+          <Link to="/transactions" className="view-all-link">
+            View All Transactions 
+            <span style={{ marginLeft: '0.25rem' }}>→</span>
+          </Link>
         </div>
 
         {/* Recent Payments */}
@@ -271,11 +290,15 @@ const Dashboard = () => {
           <h2>💰 Recent Payments</h2>
           <div className="recent-list">
             {recentPayments.length === 0 ? (
-              <div className="no-data">No recent payments</div>            ) : (
+              <div className="no-data">
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💳</div>
+                No recent payments found
+              </div>
+            ) : (
               recentPayments.map((payment: any) => (
                 <div key={payment.id} className="recent-item">
                   <div className="recent-info">
-                    <div className="recent-id">Payment #{payment.id.slice(-6)}</div>
+                    <div className="recent-id">Payment #{payment.id.slice(-6).toUpperCase()}</div>
                     <div className="recent-date">{formatDate(payment.date)}</div>
                   </div>
                   <div className="recent-amount">{formatCurrency(payment.amount)}</div>
@@ -286,7 +309,10 @@ const Dashboard = () => {
               ))
             )}
           </div>
-          <Link to="/transactions" className="view-all-link">View All Payments →</Link>
+          <Link to="/transactions" className="view-all-link">
+            View All Payments 
+            <span style={{ marginLeft: '0.25rem' }}>→</span>
+          </Link>
         </div>
 
         {/* Business Summary */}

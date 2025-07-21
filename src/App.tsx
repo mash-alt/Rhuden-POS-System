@@ -1,11 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import './styles/App.css'
+import './styles/discount.css'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import Login from './pages/Login'
 import POS from './pages/POS'
 import Register from './pages/Register'
 import TransactionHistory from './pages/TransactionHistory'
+import CreditPayments from './pages/CreditPayments'
+import FinancialReports from './pages/FinancialReports'
 import NavBar from './components/NavBar'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
@@ -43,6 +46,16 @@ function AppContent() {
         <Route path="/transactions" element={
           <ProtectedRoute>
             <TransactionHistory />
+          </ProtectedRoute>
+        } />
+        <Route path="/credit-payments" element={
+          <ProtectedRoute>
+            <CreditPayments />
+          </ProtectedRoute>
+        } />
+        <Route path="/financial-reports" element={
+          <ProtectedRoute>
+            <FinancialReports />
           </ProtectedRoute>
         } />
       </Routes>

@@ -37,6 +37,12 @@ const InventoryHamburgerMenu: React.FC<InventoryHamburgerMenuProps> = ({ onSecti
       description: 'Manage supplier information'
     },
     {
+      id: 'customers',
+      label: 'Customers',
+      icon: '👥',
+      description: 'Manage customer information'
+    },
+    {
       id: 'stock-history',
       label: 'Stock History',
       icon: '📊',

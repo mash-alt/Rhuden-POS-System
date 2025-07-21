@@ -1,0 +1,28 @@
+/* Table header lines to visually connect columns */
+.transaction-table th:after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #c7d2fe;
+  width: calc(100% - 2px);
+  margin: 0 auto;
+}
+
+/* Add hover effect to show column association */
+.transaction-table tbody tr:hover td {
+  background-color: rgba(240, 249, 255, 0.7);
+}
+
+/* Add column highlight effect */
+.transaction-table th:hover,
+.transaction-table td:hover {
+  background-color: #f0f7ff;
+}
+
+/* Maintain the zebra striping even with hover */
+.transaction-table tbody tr:nth-child(even):hover td {
+  background-color: rgba(243, 244, 246, 0.7);
+}

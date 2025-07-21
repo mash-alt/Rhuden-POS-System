@@ -33,8 +33,11 @@ export const useCustomers = () => {
             id: doc.id,
             name: data.name,
             contact: data.contact || '',
+            address: data.address || '',
             creditBalance: data.creditBalance || 0,
-            creditAgreements: data.creditAgreements || []
+            creditAgreements: data.creditAgreements || [],
+            joinDate: data.joinDate || null,
+            lastPaymentDate: data.lastPaymentDate || null,
           })
         })
         
@@ -103,7 +106,8 @@ export const useCustomers = () => {
     
     return customers.filter(customer => {
       return customer.name.toLowerCase().includes(term) ||
-             (customer.contact && customer.contact.toLowerCase().includes(term))
+             (customer.contact && customer.contact.toLowerCase().includes(term)) ||
+             (customer.address && customer.address.toLowerCase().includes(term))
     })
   }
 

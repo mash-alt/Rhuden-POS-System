@@ -1,0 +1,38 @@
+/* Scroll indicator styles */
+.scroll-indicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  z-index: 20;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.scroll-indicator span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Make the scroll indicator disappear after a while using CSS animation */
+@keyframes fadeOut {
+  0% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+.scroll-indicator {
+  animation: fadeOut 5s forwards;
+}
+
+/* Show indicator again when hovering the table container */
+.transaction-table-container:hover .scroll-indicator {
+  opacity: 0.8;
+  animation: none;
+}

@@ -20,14 +20,16 @@
 }
 
 /* Navbar Hamburger Menu Positioning */
-.navbar-container .inventory-hamburger {
+.navbar-container .inventory-hamburger,
+.navbar-container .pos-hamburger {
   position: fixed;
   left: 5px;
   top: 13px;
   z-index: 1001;
 }
 
-.navbar-container .inventory-hamburger .hamburger-btn {
+.navbar-container .inventory-hamburger .hamburger-btn,
+.navbar-container .pos-hamburger .hamburger-btn {
   width: 44px;
   height: 44px;
 }

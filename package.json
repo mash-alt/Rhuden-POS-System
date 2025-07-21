@@ -9,7 +9,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "populate-db": "node src/populateScripts/populateDatabase.js",
-    "prepare-presentation": "node src/populateScripts/preparePresentationData.js"
+    "prepare-presentation": "node src/populateScripts/preparePresentationData.js",
+    "clear-db": "node src/populateScripts/clearDatabase.js",
+    "clear-db-batch": "node src/populateScripts/clearDatabaseBatch.js",
+    "clear-db-auth": "node src/populateScripts/clearDatabaseWithAuth.js",
+    "clear-db-preserve": "node src/populateScripts/clearKeepStructure.js",
+    "admin-login": "node src/populateScripts/adminLogin.js"
   },
   "dependencies": {
     "dotenv": "^16.5.0",

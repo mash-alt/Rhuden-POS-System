@@ -1,0 +1,45 @@
+/* Discount styles for Transaction History */
+
+/* Icon for discounts in summary cards */
+.discount-icon {
+  background-color: #e879f9;
+  color: white;
+}
+
+/* Original price display */
+.original-amount {
+  color: #6b7280;
+  text-decoration: line-through;
+  font-size: 0.9em;
+}
+
+/* Discount amount display */
+.discount-amount {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Column styling */
+.discount-cell {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.original-cell {
+  color: #6b7280;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .transaction-table th:nth-child(5), /* Original price column */
+  .transaction-table td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 992px) {
+  .transaction-table th:nth-child(6), /* Discount column */
+  .transaction-table td:nth-child(6) {
+    display: none;
+  }
+}

@@ -1,5 +1,6 @@
-/* Inventory Hamburger Menu Styles */
-.inventory-hamburger {
+/* Hamburger Menu Styles */
+.inventory-hamburger,
+.pos-hamburger {
   position: relative;
   z-index: 1000;
 }

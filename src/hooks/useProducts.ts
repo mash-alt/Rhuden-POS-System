@@ -81,8 +81,9 @@ export const useProducts = () => {
         active: product.active !== false // Default to true if not specified
       }
       
-      await addDoc(collection(db, 'products'), productData)
-      console.log('Product added successfully')    } catch (error) {
+      const docRef = await addDoc(collection(db, 'products'), productData)
+      console.log('Product added successfully with ID:', docRef.id)
+      return docRef.id    } catch (error) {
       console.error('Error adding product:', error)
       throw error
     }

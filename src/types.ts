@@ -25,6 +25,7 @@ export type Category = {
   id: string;
   name: string;
   description?: string;
+  active?: boolean;
 }
 
 // Category creation type (without ID for Firestore)
@@ -38,6 +39,7 @@ export type Supplier = {
   email?: string;
   address?: string;
   notes?: string;
+  active?: boolean;
 }
 
 // Supplier creation type (without ID for Firestore)
@@ -60,8 +62,14 @@ export type Sale = {
     productId: DocumentReference;    // Reference to Product document
     qty: number;
     price: number;
+    originalPrice?: number;        // Price before discount
+    discountAmount?: number;       // Amount discounted per item
+    discountPercent?: number;      // Percentage discount per item
   }>;
   total: number;
+  originalTotal?: number;         // Total before any discounts
+  subtotal?: number;              // Total before discounts
+  discountTotal?: number;         // Total discount amount
   paymentMethod: 'cash' | 'gcash' | 'credit'; // Updated for GCash
   date: Timestamp;
   customerId?: DocumentReference;      // Reference to Customer document
@@ -69,6 +77,12 @@ export type Sale = {
   amountPaid?: number;
   dueDate?: Timestamp;
   paymentIds?: string[];              // Array of payment IDs for this sale
+  referenceCode?: string;             // Reference code for GCash payments
+  
+  // COD (Cash on Delivery) specific fields
+  isCOD?: boolean;                    // Flag to identify if this is a COD transaction
+  deliveryAddress?: string;           // Address where items should be delivered
+  deliveryDate?: Timestamp;           // When the delivery is scheduled
 }
 
 // Sale creation type (without ID for Firestore)
@@ -128,6 +142,7 @@ export type CreditAgreement = {
   nextPaymentDue: Timestamp;           // Next payment due date
   status: 'active' | 'completed' | 'overdue' | 'defaulted';
   paymentHistory: string[];            // Array of payment IDs for this credit
+  paymentDates?: Timestamp[];          // Array of scheduled payment dates
   notes?: string;
   createdAt: Timestamp;
 }

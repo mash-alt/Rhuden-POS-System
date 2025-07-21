@@ -1,4 +1,4 @@
-import type { Product, Category, Supplier, StockMovement } from '../types'
+import type { Product, Category, Supplier, StockMovement, Customer } from '../types'
 import type { TableColumn } from '../components/Table'
 import type { FormSection } from '../components/Form'
 
@@ -682,6 +682,120 @@ export const stockMovementFormSections: FormSection[] = [
         validation: (value) => {
           if (value && value.trim().length > 500) {
             return "Notes must be less than 500 characters";
+          }
+          return undefined;
+        }
+      }
+    ]
+  }
+]
+
+// Customer Table Configuration
+export const customerTableColumns: TableColumn<Customer>[] = [
+  {
+    key: 'name',
+    label: 'Customer Name',
+    className: 'name-cell'
+  },
+  {
+    key: 'contact',
+    label: 'Contact',
+    className: 'contact-cell',
+    render: (customer: Customer) => customer.contact || 'N/A'
+  },
+  {
+    key: 'address',
+    label: 'Address',
+    className: 'address-cell',
+    render: (customer: Customer) => customer.address || 'N/A'
+  },
+  {
+    key: 'creditBalance',
+    label: 'Credit Balance',
+    className: 'credit-balance-cell',
+    render: (customer: Customer) => `₱${(customer.creditBalance || 0).toFixed(2)}`
+  },
+  {
+    key: 'creditAgreements',
+    label: 'Active Agreements',
+    className: 'agreements-cell',
+    render: (customer: Customer) => {
+      const activeAgreements = customer.creditAgreements?.filter(a => a.status === 'active').length || 0;
+      const totalAgreements = customer.creditAgreements?.length || 0;
+      return `${activeAgreements}/${totalAgreements}`;
+    }
+  },
+  {
+    key: 'joinDate',
+    label: 'Join Date',
+    className: 'date-cell',
+    render: (customer: Customer) => customer.joinDate ? customer.joinDate.toDate().toLocaleDateString() : 'N/A'
+  },
+  {
+    key: 'lastPaymentDate',
+    label: 'Last Payment',
+    className: 'date-cell',
+    render: (customer: Customer) => customer.lastPaymentDate ? customer.lastPaymentDate.toDate().toLocaleDateString() : 'Never'
+  }
+]
+
+// Customer Form Configuration
+export const customerFormSections: FormSection[] = [
+  {
+    title: "Customer Information",
+    fields: [
+      {
+        name: "name",
+        label: "Customer Name *",
+        type: "text",
+        required: true,
+        placeholder: "Enter customer full name",
+        validation: (value) => {
+          if (!value || value.trim().length === 0) {
+            return "Customer name is required";
+          }
+          if (value.trim().length < 2) {
+            return "Customer name must be at least 2 characters";
+          }
+          if (value.trim().length > 100) {
+            return "Customer name must be less than 100 characters";
+          }
+          return undefined;
+        }
+      },
+      {
+        name: "contact",
+        label: "Contact Number/Email",
+        type: "text",
+        required: false,
+        placeholder: "Enter phone number or email",
+        validation: (value) => {
+          if (value && value.trim().length > 0) {
+            // Basic validation for phone or email
+            const phonePattern = /^[\+]?[0-9\s\-\(\)]{7,}$/;
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!phonePattern.test(value.trim()) && !emailPattern.test(value.trim())) {
+              return "Please enter a valid phone number or email address";
+            }
+            
+            if (value.trim().length > 100) {
+              return "Contact information must be less than 100 characters";
+            }
+          }
+          return undefined;
+        }
+      },
+      {
+        name: "address",
+        label: "Address",
+        type: "textarea",
+        required: false,
+        placeholder: "Enter customer address",
+        rows: 3,
+        validation: (value) => {
+          if (value && value.trim().length > 200) {
+            return "Address must be less than 200 characters";
           }
           return undefined;
         }

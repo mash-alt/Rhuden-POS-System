@@ -1,0 +1,20 @@
+{
+  "name": "rhuden-pos-database-scripts",
+  "version": "1.0.0",
+  "description": "Database management scripts for Rhuden POS System",
+  "main": "clearDatabase.js",
+  "scripts": {
+    "clear": "node clearDatabase.js",
+    "clear-batch": "node clearDatabaseBatch.js",
+    "clear-auth": "node clearDatabaseWithAuth.js",
+    "clear-preserve": "node clearKeepStructure.js",
+    "populate": "node populateDatabase.js",
+    "prepare-presentation": "node preparePresentationData.js",
+    "admin-login": "node adminLogin.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "firebase": "^10.7.0"
+  },
+  "private": true
+}

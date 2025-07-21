@@ -1,0 +1,340 @@
+/* COD Tag and Customer Cell Styling */
+.customer-wrapper {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+}
+
+/* COD Transaction Row Highlighting */
+.cod-transaction-row {
+  background-color: rgba(224, 242, 254, 0.2) !important; /* Light blue background */
+  border-left: 3px solid #0284c7 !important; /* Blue border */
+}
+
+/* COD Filter Button */
+.cod-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.cod-filter-btn.active {
+  background-color: #0284c7;
+  color: white;
+  border-color: #0284c7;
+}
+
+/* Debug Controls - removed */
+
+.cod-filter-btn:hover:not(.active) {
+  background-color: #e0f2fe;
+}
+
+/* COD Summary Card */
+.cod-summary-card {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.cod-summary-card .summary-icon {
+  background-color: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
+}
+
+.cod-summary-card h3 {
+  color: #0284c7;
+}
+
+.customer-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.cod-tag {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0284c7;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  animation: pulse 2s infinite;
+}
+
+.cod-tag:hover {
+  background-color: #e0f2fe;
+  transform: translateY(-1px);
+}
+
+/* COD Details in Transaction History */
+.cod-details-container {
+  margin-top: 12px;
+  border-top: 1px dashed #e0e0e0;
+  padding-top: 8px;
+  width: 100%;
+  display: block;
+}
+
+.cod-toggle-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cod-toggle-btn:hover {
+  color: #1d4ed8;
+}
+
+.cod-arrow {
+  margin-right: 8px;
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+}
+
+.cod-arrow.expanded {
+  transform: rotate(0deg);
+}
+
+.cod-details-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  animation: slideDown 0.3s ease forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(2, 132, 199, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0);
+  }
+}
+
+.cod-details-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.cod-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.cod-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.cod-value {
+  font-size: 0.9rem;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+/* Status colors - for payment statuses */
+.cod-value.status-paid {
+  color: #10b981;
+}
+
+.cod-value.status-partial {
+  color: #3b82f6;
+}
+
+.cod-value.status-pending {
+  color: #f59e0b;
+}
+
+/* Responsive layout for larger screens */
+@media (min-width: 640px) {
+  .cod-details-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* COD Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cod-modal {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.2s ease-in-out;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.cod-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cod-modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #1f2937;
+}
+
+.cod-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 32px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.cod-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.cod-modal-content {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.cod-modal-info-group {
+  margin-bottom: 20px;
+}
+
+.cod-modal-info-group h4 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 5px;
+}
+
+.cod-modal-info-row {
+  display: flex;
+  margin-bottom: 6px;
+  padding: 4px 0;
+}
+
+.cod-modal-label {
+  font-size: 0.9rem;
+  color: #6b7280;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.cod-modal-value {
+  font-size: 0.9rem;
+  color: #1f2937;
+  flex: 1;
+  font-weight: 500;
+}
+
+.cod-payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+.cod-payment-table th,
+.cod-payment-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cod-payment-table th {
+  background-color: #f9fafb;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.cod-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cod-modal-footer button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn.secondary {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.btn.secondary:hover {
+  background-color: #e5e7eb;
+}

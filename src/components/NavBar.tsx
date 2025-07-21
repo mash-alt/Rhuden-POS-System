@@ -87,6 +87,12 @@ const NavBar = () => {
             className={`navbar-link ${isActiveLink('/transactions') ? 'active' : ''}`}
           >
             Transactions
+          </Link>
+          <Link 
+            to="/financial-reports" 
+            className={`navbar-link ${isActiveLink('/financial-reports') ? 'active' : ''}`}
+          >
+            Reports
           </Link>        </div>
 
         {/* User Indicator */}
@@ -143,6 +149,13 @@ const NavBar = () => {
           onClick={() => setIsMobileMenuOpen(false)}
         >
           Transactions        </Link>
+        <Link 
+          to="/financial-reports" 
+          className={`mobile-link ${isActiveLink('/financial-reports') ? 'active' : ''}`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          Reports
+        </Link>
         
         {/* Mobile User Indicator */}
         <div className="mobile-user-indicator">

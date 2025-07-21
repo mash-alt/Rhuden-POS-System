@@ -37,7 +37,14 @@ export const useSales = () => {
             creditStatus: data.creditStatus,
             amountPaid: data.amountPaid,
             dueDate: data.dueDate,
-            paymentIds: data.paymentIds || []
+            paymentIds: data.paymentIds || [],
+            // COD specific fields
+            isCOD: data.isCOD || false,
+            deliveryAddress: data.deliveryAddress,
+            deliveryDate: data.deliveryDate,
+            // Other fields that might be missing
+            originalTotal: data.originalTotal,
+            discountTotal: data.discountTotal
           })
         })
         
@@ -107,6 +114,11 @@ export const useSales = () => {
       return total + (sale.total - amountPaid)
     }, 0)
   }
+  
+  // Function to get all COD sales
+  const getCODSales = () => {
+    return sales.filter(sale => sale.isCOD === true)
+  }
 
   return {
     sales,
@@ -118,7 +130,8 @@ export const useSales = () => {
     getTodaysSales,
     getTotalSalesAmount,
     getCreditSales,
-    getPendingCreditAmount
+    getPendingCreditAmount,
+    getCODSales
   }
 }
 

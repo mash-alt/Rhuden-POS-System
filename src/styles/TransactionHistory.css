@@ -8,6 +8,7 @@
 }
 
 /* Transaction Header */
+
 .transaction-header {
   margin-bottom: 2rem;
   text-align: center;
@@ -33,7 +34,7 @@
 /* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -206,44 +207,121 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   overflow: hidden;
+  max-height: 65vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .transaction-table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 1200px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  border: 1px solid #e5e7eb;
 }
 
 .transaction-table thead {
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  background: #eef2ff; /* Light indigo background */
+  border-bottom: 2px solid #c7d2fe; /* Indigo border */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.transaction-table tbody {
+  display: block;
+  overflow-y: auto;
+  max-height: 60vh; /* Adjust as needed */
+}
+
+.transaction-table thead,
+.transaction-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
 }
 
 .transaction-table th {
-  padding: 1rem 1.5rem;
-  text-align: left;
+  padding: 1.25rem 1.5rem;
   font-weight: 600;
   color: #374151;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+  position: relative;
 }
 
 .transaction-table tbody tr {
   border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Enhanced zebra striping for better row distinction */
+.transaction-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
 }
 
 .transaction-table tbody tr:hover {
-  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .transaction-table tbody tr:last-child {
   border-bottom: none;
 }
 
-.transaction-table td {
-  padding: 1rem 1.5rem;
+.transaction-table td,
+.transaction-table th {
+  padding: 1.25rem 1.5rem;
   vertical-align: middle;
+  white-space: nowrap;
+  border-right: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.transaction-table td:last-child,
+.transaction-table th:last-child {
+  border-right: none;
+}
+
+/* Column widths */
+.transaction-table .type-cell {
+  width: 120px;
+  text-align: center;
+}
+
+.transaction-table .date-cell {
+  width: 150px;
+  text-align: left;
+}
+
+.transaction-table .customer-cell {
+  width: 180px;
+  text-align: left;
+}
+
+.transaction-table .description-cell {
+  width: 40%;
+  max-width: 450px;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.transaction-table .amount-cell {
+  width: 120px;
+  text-align: right;
+}
+
+.transaction-table .status-cell,
+.transaction-table .method-cell {
+  width: 110px;
+  text-align: center;
 }
 
 /* Table Cell Styles */
@@ -330,6 +408,48 @@
   color: #1e40af;
 }
 
+/* Credit Payment Badge - Special styling */
+.type-badge.type-credit_payment {
+  background-color: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
+}
+
+/* COD Badge */
+.status-badge.status-cod {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+/* Delivery Status Badges */
+.status-badge.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.status-in_transit {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.status-delivered {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.status-failed {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Status badges container for multiple badges */
+.status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 /* Method Badges */
 .method-badge {
   display: inline-block;
@@ -403,7 +523,7 @@
   }
   
   .summary-cards {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
 }
 

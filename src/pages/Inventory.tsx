@@ -191,6 +191,26 @@ const Inventory = () => {
   };
   const handleProductFormSubmit = async (productData: Omit<Product, "id">) => {
     try {
+      // Handle pricing method - calculate price if percentage method is selected
+      if (productData.pricingMethod === 'percentage' && productData.priceMarkupPercentage !== undefined) {
+        const costPrice = productData.cost || 0;
+        const markupPercentage = parseFloat(productData.priceMarkupPercentage as any) || 0;
+        
+        // Calculate price based on markup percentage
+        const calculatedPrice = costPrice + (costPrice * markupPercentage / 100);
+        
+        // Update the price in the productData
+        productData.price = parseFloat(calculatedPrice.toFixed(2));
+        
+        // Remove the pricing method fields as they're not part of the Product type
+        delete (productData as any).pricingMethod;
+        delete (productData as any).priceMarkupPercentage;
+      } else if (productData.pricingMethod === 'custom') {
+        // Just remove the pricing method fields
+        delete (productData as any).pricingMethod;
+        delete (productData as any).priceMarkupPercentage;
+      }
+      
       // Validate required fields
       const errors: {[key: string]: string} = {};
       if (!productData.name?.trim()) {
@@ -199,7 +219,7 @@ const Inventory = () => {
       if (!productData.sku?.trim()) {
         errors.sku = "SKU is required";
       }
-      if (productData.price === undefined || productData.price < 0) {
+      if (productData.price === undefined || productData.price <= 0) {
         errors.price = "Valid price is required";
       }
       if (productData.cost === undefined || productData.cost < 0) {

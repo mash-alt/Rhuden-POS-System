@@ -15,6 +15,9 @@ export type Product = {
   unit?: string;
   active?: boolean;
   createdAt?: Timestamp;
+  // The following fields are only used in the form and not stored in the database
+  pricingMethod?: 'custom' | 'percentage';
+  priceMarkupPercentage?: number;
 }
 
 // Product creation type (without ID for Firestore)

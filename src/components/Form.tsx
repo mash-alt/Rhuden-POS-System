@@ -3,14 +3,19 @@ import React, { useState } from "react";
 export interface FormField {
   name: string
   label: string
-  type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox'
+  type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'radio'
   placeholder?: string
   required?: boolean
   options?: { value: string; label: string }[]
   rows?: number
   step?: string
   min?: string | number
-  validation?: (value: any) => string | undefined
+  defaultValue?: string | number | boolean
+  dependsOn?: {
+    field: string
+    value: string | number | boolean
+  }
+  validation?: (value: any, formData?: Record<string, any>) => string | undefined
 }
 
 export interface FormSection {
@@ -42,10 +47,14 @@ function Form<T extends Record<string, any>>({
       section.fields.forEach(field => {
         if (initialData && field.name in initialData) {
           data[field.name] = initialData[field.name]
+        } else if (field.defaultValue !== undefined) {
+          data[field.name] = field.defaultValue
         } else if (field.type === 'checkbox') {
           data[field.name] = false
         } else if (field.type === 'number') {
           data[field.name] = 0
+        } else if (field.type === 'radio' && field.options && field.options.length > 0) {
+          data[field.name] = field.options[0].value
         } else {
           data[field.name] = ""
         }
@@ -64,14 +73,24 @@ function Form<T extends Record<string, any>>({
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : type === "number" ? parseFloat(value) || 0 : value,
-    }))
+    const newFormData = { ...formData };
+    
+    // Handle different input types
+    if (type === "checkbox") {
+      newFormData[name] = checked;
+    } else if (type === "number") {
+      newFormData[name] = parseFloat(value) || 0;
+    } else if (type === "radio") {
+      newFormData[name] = value;
+    } else {
+      newFormData[name] = value;
+    }
+    
+    setFormData(newFormData);
 
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   }
 
@@ -80,6 +99,11 @@ function Form<T extends Record<string, any>>({
 
     sections.forEach(section => {
       section.fields.forEach(field => {
+        // Skip validation for fields that shouldn't be shown based on dependsOn
+        if (field.dependsOn && formData[field.dependsOn.field] !== field.dependsOn.value) {
+          return;
+        }
+        
         const value = formData[field.name]
         
         // Required field validation
@@ -92,8 +116,8 @@ function Form<T extends Record<string, any>>({
         }
 
         // Custom validation
-        if (field.validation && value !== undefined && value !== '') {
-          const validationError = field.validation(value)
+        if (field.validation && (value !== undefined && value !== '')) {
+          const validationError = field.validation(value, formData)
           if (validationError) {
             newErrors[field.name] = validationError
           }
@@ -141,6 +165,11 @@ function Form<T extends Record<string, any>>({
   }
 
   const renderField = (field: FormField) => {
+    // Check if this field should be displayed based on dependsOn
+    if (field.dependsOn && formData[field.dependsOn.field] !== field.dependsOn.value) {
+      return null;
+    }
+    
     const value = formData[field.name]
     const hasError = !!errors[field.name]
 
@@ -188,6 +217,24 @@ function Form<T extends Record<string, any>>({
             <span>{field.label}</span>
           </label>
         )
+        
+      case 'radio':
+        return (
+          <div className="radio-group">
+            {field.options?.map((option) => (
+              <label key={option.value} className="radio-label">
+                <input
+                  type="radio"
+                  name={field.name}
+                  value={option.value}
+                  checked={value === option.value}
+                  onChange={handleInputChange}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        )
 
       default:
         return (
@@ -221,19 +268,31 @@ function Form<T extends Record<string, any>>({
             {sections.map((section) => (
               <div key={section.title} className="form-section">
                 <h3>{section.title}</h3>
-                {section.fields.map((field) => (
-                  <div key={field.name} className="form-group">
-                    {field.type !== 'checkbox' && (
-                      <label htmlFor={field.name}>
-                        {field.label} {field.required && '*'}
-                      </label>
-                    )}
-                    {renderField(field)}
-                    {errors[field.name] && (
-                      <span className="error-message">{errors[field.name]}</span>
-                    )}
-                  </div>
-                ))}
+                {section.fields.map((field) => {
+                  // Skip rendering if this field should be hidden based on dependsOn
+                  if (field.dependsOn && formData[field.dependsOn.field] !== field.dependsOn.value) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div key={field.name} className="form-group">
+                      {field.type !== 'checkbox' && field.type !== 'radio' && (
+                        <label htmlFor={field.name}>
+                          {field.label} {field.required && '*'}
+                        </label>
+                      )}
+                      {field.type === 'radio' && (
+                        <label className="radio-group-label">
+                          {field.label} {field.required && '*'}
+                        </label>
+                      )}
+                      {renderField(field)}
+                      {errors[field.name] && (
+                        <span className="error-message">{errors[field.name]}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>

@@ -64,18 +64,11 @@ const Dashboard = () => {
   // Total payments (all payments including credit payments)
   const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
   
-  // Calculate outstanding amount (sales amount minus payments)
-  const totalOutstanding = sales.reduce((sum, sale) => {
-    // Find all payments for this sale
-    const salePayments = payments.filter((p: any) => {
-      const saleId = typeof p.saleId === 'string' ? p.saleId : p.saleId?.id;
-      return saleId === sale.id;
-    });
-    
-    // For non-credit sales, use the sale's amountPaid field
-    // For credit sales, use the sum of payments
-    const paidAmount = salePayments.reduce((pSum: number, p: any) => pSum + p.amount, 0);
-    return sum + Math.max(0, sale.total - paidAmount);
+  // Calculate outstanding amount based on customer credit balances
+  // This aligns with the customer credit data shown in the transaction history
+  const totalOutstanding = customers.reduce((sum, customer) => {
+    // Add the customer's credit balance to the total
+    return sum + (customer.creditBalance || 0);
   }, 0);
 
   const creditCustomers = customers.filter(customer => (customer.creditBalance || 0) > 0);
@@ -232,11 +225,14 @@ const Dashboard = () => {
                   <h4>Outstanding Credit</h4>
                   <p>{creditCustomers.length} customers have outstanding balances</p>
                   <div className="credit-customers">
-                    {creditCustomers.slice(0, 2).map(customer => (
-                      <span key={customer.id} className="credit-badge">
-                        {customer.name} ({formatCurrency(customer.creditBalance || 0)})
-                      </span>
-                    ))}
+                    {creditCustomers
+                      .sort((a, b) => (b.creditBalance || 0) - (a.creditBalance || 0)) // Sort by highest balance first
+                      .slice(0, 2)
+                      .map(customer => (
+                        <span key={customer.id} className="credit-badge">
+                          {customer.name} ({formatCurrency(customer.creditBalance || 0)})
+                        </span>
+                      ))}
                     {creditCustomers.length > 2 && (
                       <span className="more-items">+{creditCustomers.length - 2} more</span>
                     )}

@@ -174,29 +174,6 @@ export const productFormSections: FormSection[] = [
     title: "Pricing",
     fields: [
       {
-        name: "price",
-        label: "Selling Price",
-        type: "number",
-        required: true,
-        placeholder: "0.00",
-        step: "0.01",
-        min: "0",
-        validation: (value) => {
-          const numValue = parseFloat(value);
-          if (isNaN(numValue) || numValue <= 0) {
-            return "Price must be greater than 0";
-          }
-          if (numValue > 999999.99) {
-            return "Price cannot exceed $999,999.99";
-          }
-          // Check for reasonable decimal places
-          if (value.toString().includes('.') && value.toString().split('.')[1].length > 2) {
-            return "Price can have at most 2 decimal places";
-          }
-          return undefined;
-        }
-      },
-      {
         name: "cost",
         label: "Cost Price",
         type: "number",
@@ -217,6 +194,71 @@ export const productFormSections: FormSection[] = [
           // Check for reasonable decimal places
           if (value.toString().includes('.') && value.toString().split('.')[1].length > 2) {
             return "Cost can have at most 2 decimal places";
+          }
+          return undefined;
+        }
+      },
+      {
+        name: "pricingMethod",
+        label: "Pricing Method",
+        type: "radio",
+        options: [
+          { value: "custom", label: "Custom Price" },
+          { value: "percentage", label: "Percentage of Cost" }
+        ],
+        defaultValue: "custom"
+      },
+      {
+        name: "priceMarkupPercentage",
+        label: "Markup Percentage",
+        type: "number",
+        placeholder: "30",
+        min: "0",
+        step: "1",
+        dependsOn: {
+          field: "pricingMethod",
+          value: "percentage"
+        },
+        validation: (value, formData) => {
+          if (formData?.pricingMethod !== "percentage") return undefined;
+          
+          if (value === '' || value === null || value === undefined) {
+            return "Please enter a markup percentage";
+          }
+          
+          const numValue = parseFloat(value);
+          if (isNaN(numValue) || numValue < 0) {
+            return "Percentage must be 0 or greater";
+          }
+          
+          return undefined;
+        }
+      },
+      {
+        name: "price",
+        label: "Selling Price",
+        type: "number",
+        required: true,
+        placeholder: "0.00",
+        step: "0.01",
+        min: "0",
+        dependsOn: {
+          field: "pricingMethod",
+          value: "custom"
+        },
+        validation: (value, formData) => {
+          if (formData?.pricingMethod === "percentage") return undefined;
+          
+          const numValue = parseFloat(value);
+          if (isNaN(numValue) || numValue <= 0) {
+            return "Price must be greater than 0";
+          }
+          if (numValue > 999999.99) {
+            return "Price cannot exceed $999,999.99";
+          }
+          // Check for reasonable decimal places
+          if (value.toString().includes('.') && value.toString().split('.')[1].length > 2) {
+            return "Price can have at most 2 decimal places";
           }
           return undefined;
         }

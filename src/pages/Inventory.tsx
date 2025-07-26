@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Timestamp, doc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { Timestamp, doc, collection, addDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import Table from "../components/Table";
 import Form from "../components/Form";
@@ -9,7 +9,6 @@ import useProducts from "../hooks/useProducts";
 import { useCategories } from "../hooks/useCategories";
 import { useSuppliers } from "../hooks/useSuppliers";
 import { useStockMovements } from "../hooks/useStockMovements";
-import useSales from "../hooks/useSales";
 import useCustomers from "../hooks/useCustomers";
 import { downloadCSV } from "../utils/exportCsv";
 import type { Product, Category, Supplier, StockMovement, Customer } from "../types";
@@ -64,7 +63,6 @@ const Inventory = () => {
     searchStockMovements,
   } = useStockMovements();
   // Transaction History hooks
-  const { sales } = useSales();
   const { customers, loading: customersLoading, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const [searchTerm, setSearchTerm] = useState("");
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
@@ -84,7 +82,7 @@ const Inventory = () => {
     useState<StockMovement | null>(null);
 
   // Form validation state
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [, setFormErrors] = useState<{[key: string]: string}>({});
 
   // Use the enhanced search functionality
   const filteredProducts = searchProducts(searchTerm);

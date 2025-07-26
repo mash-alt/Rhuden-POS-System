@@ -1,5 +1,4 @@
 import React from 'react';
-import { Timestamp } from 'firebase/firestore';
 import type { CreditAgreement } from '../types';
 
 // Styles for credit payment schedule

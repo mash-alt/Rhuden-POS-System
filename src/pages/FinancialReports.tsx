@@ -8,21 +8,22 @@ import "../styles/FinancialReports.css";
 
 const FinancialReports = () => {
   // ...existing code...
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [salesData, setSalesData] = useState<Sale[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [income, setIncome] = useState(0);
-  const [expenses, setExpenses] = useState(0);
-  const [profit, setProfit] = useState(0);
+  const [salesTotal, setSalesTotal] = useState(0); // Total sales/income
+  const [expenses, setExpenses] = useState(0); // Total expenses
+  const [grossProfit, setGrossProfit] = useState(0); // Sales minus direct costs
+  const [netProfit, setNetProfit] = useState(0); // Final profit after all deductions
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       // Fetch sales
       const salesSnap = await getDocs(collection(db, "sales"));
-      const salesData = salesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Sale[];
-      console.log("SALES DATA:", salesData);
+      const fetchedSalesData = salesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Sale[];
+      console.log("SALES DATA:", fetchedSalesData);
       
       // Fetch stock movements
       const stockSnap = await getDocs(collection(db, "stockMovements"));
@@ -34,7 +35,7 @@ const FinancialReports = () => {
       const prodData = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
       console.log("PRODUCTS:", prodData);
       
-      setSales(salesData);
+      setSalesData(fetchedSalesData);
       setStockMovements(stockData);
       setProducts(prodData);
       setLoading(false);
@@ -48,16 +49,17 @@ const FinancialReports = () => {
     name: string;
     sku: string;
     quantitySold: number;
-    income: number;
+    sales: number;
     costOfGoods: number;
-    profit: number;
-    profitMargin: number;
+    grossProfit: number;
+    netProfit: number;
+    grossMargin: number;
   }>>([]);
 
   useEffect(() => {
-    // Calculate income: sum of all sales total
-    const totalIncome = sales.reduce((sum, sale) => sum + sale.total, 0);
-    console.log("Calculated Income:", totalIncome);
+    // Calculate sales: sum of all sales total
+    const totalSales = salesData.reduce((sum: number, sale: Sale) => sum + sale.total, 0);
+    console.log("Calculated Total Sales:", totalSales);
 
     // Log all stock movements first to analyze
     console.log("All Stock Movements:", stockMovements);
@@ -81,7 +83,21 @@ const FinancialReports = () => {
     // We're using these movements for expense calculations
     
     // Calculate expenses with detailed logging
+    console.log("====== EXPENSE CALCULATION DETAILS ======");
     let totalExpenses = 0;
+    
+    // Define a type for our expense log entries
+    type ExpenseLogEntry = {
+      movementId: string;
+      date: string;
+      product: string;
+      quantity: number;
+      unitCost: number;
+      totalCost: number;
+    };
+    
+    let expenseDetailsLog: ExpenseLogEntry[] = [];
+    
     movementsForExpenses.forEach(mov => {
       console.log("Stock movement productId:", mov.productId);
       
@@ -101,26 +117,102 @@ const FinancialReports = () => {
       
       console.log(`Movement ID: ${mov.id}, Product: ${product?.name}, Cost: ${cost}, Quantity: ${quantity}, Total Cost: ${movementCost}`);
       
+      // Store expense details for summary log
+      expenseDetailsLog.push({
+        movementId: mov.id,
+        date: mov.date ? mov.date.toString() : 'Unknown', // Convert timestamp to string
+        product: product?.name || 'Unknown',
+        quantity: quantity,
+        unitCost: cost,
+        totalCost: movementCost
+      });
+      
       totalExpenses += movementCost;
     });
     
-    console.log("Calculated Expenses:", totalExpenses);
-    console.log("Calculated Profit:", totalIncome - totalExpenses);
+    // Log expense summary table
+    console.table(expenseDetailsLog);
+    console.log(`Total Expenses: ${totalExpenses}`);
+    console.log("========================================");
+    
+    // Create a map of product sales quantities (needed for expense calculations)
+    const productSalesQuantityMap = new Map<string, number>();
+    
+    salesData.forEach(sale => {
+      sale.items.forEach(item => {
+        const productIdString = typeof item.productId === 'string'
+          ? item.productId
+          : item.productId.id || (item.productId.path ? item.productId.path.split('/').pop() : null);
+        
+        if (productIdString) {
+          const existingQty = productSalesQuantityMap.get(productIdString) || 0;
+          productSalesQuantityMap.set(productIdString, existingQty + item.qty);
+        }
+      });
+    });
+    
+    console.log("Product Sales Quantity Map:", Object.fromEntries(productSalesQuantityMap));
+    
+    // First, calculate product-based cost of goods sold using product cost × quantity sold
+    let productBasedCOGS = 0;
+    products.forEach(product => {
+      if (product.id) {
+        const soldQuantity = productSalesQuantityMap.get(product.id) || 0;
+        if (soldQuantity > 0) {
+          const cost = product.cost || 0;
+          productBasedCOGS += cost * soldQuantity;
+        }
+      }
+    });
+    
+    // totalGrossProfit now represents product-based COGS calculation
+    const totalGrossProfit = totalSales - productBasedCOGS;
+    
+    // totalNetProfit now represents stock movement-based expense calculation
+    const totalNetProfit = totalSales - totalExpenses;
+    
+    // Detailed logging of financial calculations
+    console.log("====== FINANCIAL CALCULATIONS ======");
+    console.log("Calculated Sales/Income Total:", totalSales);
+    console.log("Calculated Stock-Based Expenses:", totalExpenses);
+    console.log("Calculated Product-Based COGS:", productBasedCOGS);
+    console.log("Gross Profit Calculation (product-based):", `${totalSales} - ${productBasedCOGS} = ${totalGrossProfit}`);
+    console.log("Calculated Gross Profit:", totalGrossProfit);
+    console.log("Net Profit Calculation (stock-based):", `${totalSales} - ${totalExpenses} = ${totalNetProfit}`);
+    console.log("Calculated Net Profit:", totalNetProfit);
+    console.log("Gross Profit Margin:", totalSales > 0 ? `${((totalGrossProfit / totalSales) * 100).toFixed(2)}%` : "N/A (no sales)");
+    console.log("Net Profit Margin:", totalSales > 0 ? `${((totalNetProfit / totalSales) * 100).toFixed(2)}%` : "N/A (no sales)");
+    console.log("==================================");
 
-    setIncome(totalIncome);
+    setSalesTotal(totalSales);
     setExpenses(totalExpenses);
-    setProfit(totalIncome - totalExpenses);
+    setGrossProfit(totalGrossProfit); // Set gross profit correctly
+    setNetProfit(totalNetProfit); // Set net profit correctly
 
     // Create product breakdown report data
     const productSalesMap = new Map<string, { 
       quantitySold: number; 
-      income: number; 
+      revenue: number; // Renamed from income to revenue
       name: string;
       sku: string;
     }>();
     
     // Process sales data to calculate revenue per product
-    sales.forEach(sale => {
+    console.log("====== SALES CALCULATION DETAILS ======");
+    
+    // Define a type for our sales log entries
+    type SalesLogEntry = {
+      saleId: string;
+      date: string;
+      product: string;
+      quantity: number;
+      unitPrice: number;
+      totalSale: number;
+    };
+    
+    let salesDetailsLog: SalesLogEntry[] = [];
+    
+    salesData.forEach((sale: Sale) => {
       sale.items.forEach(item => {
         // Get the product ID from the DocumentReference
         const productIdString = typeof item.productId === 'string'
@@ -132,20 +224,48 @@ const FinancialReports = () => {
           if (product) {
             const existingData = productSalesMap.get(productIdString) || { 
               quantitySold: 0, 
-              income: 0, 
+              revenue: 0, 
               name: product.name,
               sku: product.sku || 'N/A'
             };
             
+            const itemRevenue = item.price * item.qty;
+            
+            // Log each sale item
+            console.log(`Sale ID: ${sale.id}, Product: ${product.name}, Qty: ${item.qty}, Price: ${item.price}, Revenue: ${itemRevenue}`);
+            
+            // Store sales details for summary log
+            salesDetailsLog.push({
+              saleId: sale.id,
+              date: sale.date ? sale.date.toString() : 'Unknown',
+              product: product.name,
+              quantity: item.qty,
+              unitPrice: item.price,
+              totalSale: itemRevenue
+            });
+            
             productSalesMap.set(productIdString, {
               ...existingData,
               quantitySold: existingData.quantitySold + item.qty,
-              income: existingData.income + (item.price * item.qty)
+              revenue: existingData.revenue + itemRevenue
             });
           }
         }
       });
     });
+    
+    // Log sales summary table
+    console.log("Sales Details:");
+    console.table(salesDetailsLog);
+    console.log("Sales Summary by Product:");
+    console.table(Array.from(productSalesMap.entries()).map(([id, data]) => ({
+      productId: id,
+      name: data.name,
+      sku: data.sku,
+      quantitySold: data.quantitySold,
+      totalRevenue: data.revenue
+    })));
+    console.log("========================================");
     
     // Process expense data by product
     const productExpenseMap = new Map<string, number>();
@@ -165,57 +285,104 @@ const FinancialReports = () => {
       }
     });
     
-    // Combine income and expense data for each product
+    // Combine sales and expense data for each product
+    console.log("====== PRODUCT CALCULATIONS ======");
     const productBreakdownData = Array.from(productSalesMap.entries()).map(([id, data]) => {
       const costOfGoods = productExpenseMap.get(id) || 0;
-      const profit = data.income - costOfGoods;
-      const profitMargin = data.income > 0 ? (profit / data.income) * 100 : 0;
+      const grossProfit = data.revenue - costOfGoods;
+      // For now, net profit equals gross profit until we implement additional deductions
+      const netProfit = grossProfit;
+      const grossMargin = data.revenue > 0 ? (grossProfit / data.revenue) * 100 : 0;
+      
+      // Log each product's financial calculations
+      console.log(`Product: ${data.name} (ID: ${id})`);
+      console.log(`  - Sales: ${data.revenue}`);
+      console.log(`  - Quantity Sold: ${data.quantitySold}`);
+      console.log(`  - Cost of Goods: ${costOfGoods}`);
+      console.log(`  - Gross Profit Calculation: ${data.revenue} - ${costOfGoods} = ${grossProfit}`);
+      console.log(`  - Gross Profit Margin: ${grossMargin.toFixed(2)}%`);
+      console.log("-------------------------------");
       
       return {
         id,
         name: data.name,
         sku: data.sku,
         quantitySold: data.quantitySold,
-        income: data.income,
+        sales: data.revenue,
         costOfGoods,
-        profit,
-        profitMargin
+        grossProfit,
+        netProfit,
+        grossMargin
       };
     });
+    console.log("==================================");
     
-    // Sort by profit (highest first)
-    productBreakdownData.sort((a, b) => b.profit - a.profit);
+    // Sort by gross profit (highest first)
+    productBreakdownData.sort((a, b) => b.grossProfit - a.grossProfit);
+    
+    // Calculate and log product summary data
+    const totalProductSales = productBreakdownData.reduce((sum, product) => sum + product.sales, 0);
+    const totalProductCOGS = productBreakdownData.reduce((sum, product) => sum + product.costOfGoods, 0);
+    const totalProductGrossProfit = productBreakdownData.reduce((sum, product) => sum + product.grossProfit, 0);
+    const totalProductNetProfit = productBreakdownData.reduce((sum, product) => sum + product.netProfit, 0);
+    
+    console.log("====== PRODUCT SUMMARY TOTALS ======");
+    console.log(`Total Product Sales: ${totalProductSales}`);
+    console.log(`Total Product COGS: ${totalProductCOGS}`);
+    console.log(`Total Product Gross Profit: ${totalProductGrossProfit}`);
+    console.log(`Total Product Net Profit: ${totalProductNetProfit}`);
+    console.log(`Overall Gross Margin: ${totalProductSales > 0 ? ((totalProductGrossProfit / totalProductSales) * 100).toFixed(2) : 0}%`);
+    console.log("====================================");
     
     setProductBreakdown(productBreakdownData);
-  }, [sales, stockMovements, products]);
+  }, [salesData, stockMovements, products]);
 
   const handleExportCSV = () => {
-    // Create Accounting-Style Product Breakdown CSV
-    const headers = ["Product Name", "SKU", "Quantity Sold", "Income", "Cost of Goods", "Profit", "Profit Margin (%)"];
+    // Create Financial Statement CSV with Summary and Product Breakdown
     
-    const csvRows = [
-      headers.join(","),
+    // Start with Financial Summary Section
+    const summaryHeaders = ["Financial Summary", "", "", "", "", "", ""];
+    const summaryRows = [
+      ["Total Sales/Income", "", "", `₱${salesTotal.toFixed(2)}`, "", "", ""],
+      ["Total Expenses", "", "", `₱${expenses.toFixed(2)}`, "", "", ""],
+      ["Gross Profit", "", "", `₱${grossProfit.toFixed(2)}`, "", "", `${salesTotal > 0 ? ((grossProfit / salesTotal) * 100).toFixed(2) : 0}%`],
+      ["Net Profit", "", "", `₱${netProfit.toFixed(2)}`, "", "", `${salesTotal > 0 ? ((netProfit / salesTotal) * 100).toFixed(2) : 0}%`],
+      ["", "", "", "", "", "", ""], // Empty row as separator
+    ];
+    
+    // Then Product Breakdown Section
+    const productHeaders = ["Product Name", "SKU", "Quantity Sold", "Sales/Income", "Cost of Goods", "Gross Profit", "Gross Margin (%)"];
+    
+    const productRows = [
       ...productBreakdown.map(product => [
         `"${product.name.replace(/"/g, '""')}"`, // Escape quotes in product names
         product.sku,
         product.quantitySold,
-        product.income.toFixed(2),
+        product.sales.toFixed(2),
         product.costOfGoods.toFixed(2),
-        product.profit.toFixed(2),
-        product.profitMargin.toFixed(2)
-      ].join(",")),
+        product.grossProfit.toFixed(2),
+        product.grossMargin.toFixed(2)
+      ]),
       // Add a totals row
       [
         '"TOTAL"',
         '',
         productBreakdown.reduce((sum, product) => sum + product.quantitySold, 0),
-        productBreakdown.reduce((sum, product) => sum + product.income, 0).toFixed(2),
+        productBreakdown.reduce((sum, product) => sum + product.sales, 0).toFixed(2),
         productBreakdown.reduce((sum, product) => sum + product.costOfGoods, 0).toFixed(2),
-        productBreakdown.reduce((sum, product) => sum + product.profit, 0).toFixed(2),
-        (productBreakdown.reduce((sum, product) => sum + product.income, 0) > 0 ? 
-          (productBreakdown.reduce((sum, product) => sum + product.profit, 0) / 
-           productBreakdown.reduce((sum, product) => sum + product.income, 0) * 100) : 0).toFixed(2)
-      ].join(",")
+        productBreakdown.reduce((sum, product) => sum + product.grossProfit, 0).toFixed(2),
+        (productBreakdown.reduce((sum, product) => sum + product.sales, 0) > 0 ? 
+          (productBreakdown.reduce((sum, product) => sum + product.grossProfit, 0) / 
+           productBreakdown.reduce((sum, product) => sum + product.sales, 0) * 100) : 0).toFixed(2)
+      ]
+    ];
+    
+    // Combine all rows for the final CSV
+    const csvRows = [
+      summaryHeaders.join(","),
+      ...summaryRows.map(row => row.join(",")),
+      productHeaders.join(","),
+      ...productRows.map(row => row.join(","))
     ];
     
     const csvContent = csvRows.join("\n");
@@ -250,14 +417,14 @@ const FinancialReports = () => {
         <div className="financial-summary">
           <div className="summary-card income">
             <div className="card-icon">
-              <i className="fas fa-arrow-up"></i>
+              <i className="fas fa-shopping-cart"></i>
             </div>
             <div className="card-content">
-              <h3>Income</h3>
-              <div className="card-value">₱{income.toLocaleString()}</div>
-              {income > 0 && sales.length > 0 && (
+              <h3>Income/Sales</h3>
+              <div className="card-value">₱{salesTotal.toLocaleString()}</div>
+              {salesTotal > 0 && salesData.length > 0 && (
                 <div className="card-subtitle">
-                  {sales.length} transactions
+                  {salesData.length} transactions
                 </div>
               )}
             </div>
@@ -270,24 +437,39 @@ const FinancialReports = () => {
             <div className="card-content">
               <h3>Expenses</h3>
               <div className="card-value">₱{expenses.toLocaleString()}</div>
-              {income > 0 && (
+              {salesTotal > 0 && (
                 <div className="card-subtitle">
-                  {((expenses / income) * 100).toFixed(0)}% of income
+                  {((expenses / salesTotal) * 100).toFixed(0)}% of sales
                 </div>
               )}
             </div>
           </div>
           
-          <div className="summary-card profit">
+          <div className="summary-card gross-profit">
             <div className="card-icon">
               <i className="fas fa-chart-line"></i>
             </div>
             <div className="card-content">
-              <h3>Profit</h3>
-              <div className="card-value">₱{profit.toLocaleString()}</div>
-              {income > 0 && (
+              <h3>Gross Profit</h3>
+              <div className="card-value">₱{grossProfit.toLocaleString()}</div>
+              {salesTotal > 0 && (
                 <div className="card-subtitle">
-                  {((profit / income) * 100).toFixed(0)}% margin
+                  {((grossProfit / salesTotal) * 100).toFixed(0)}% margin
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="summary-card net-profit">
+            <div className="card-icon">
+              <i className="fas fa-coins"></i>
+            </div>
+            <div className="card-content">
+              <h3>Net Profit</h3>
+              <div className="card-value">₱{netProfit.toLocaleString()}</div>
+              {salesTotal > 0 && (
+                <div className="card-subtitle">
+                  {((netProfit / salesTotal) * 100).toFixed(0)}% of sales
                 </div>
               )}
             </div>
@@ -301,12 +483,12 @@ const FinancialReports = () => {
         <div className="report-section payment-method-section">
           <div className="section-header">
             <h2 className="section-title">Payment Method Distribution</h2>
-            <div className="section-subtitle">Breakdown of income by payment type</div>
+            <div className="section-subtitle">Breakdown of revenue by payment type</div>
           </div>
           
           <div className="payment-distribution">
             {(() => {
-              const paymentMethods = sales.reduce((acc, sale) => {
+              const paymentMethods = salesData.reduce((acc: Record<string, number>, sale: Sale) => {
                 acc[sale.paymentMethod] = (acc[sale.paymentMethod] || 0) + sale.total;
                 return acc;
               }, {} as Record<string, number>);
@@ -319,7 +501,7 @@ const FinancialReports = () => {
               };
               
               return Object.entries(paymentMethods).map(([method, amount], idx) => {
-                const percentage = income > 0 ? ((amount / income) * 100) : 0;
+                const percentage = salesTotal > 0 ? ((amount / salesTotal) * 100) : 0;
                 
                 return (
                   <div className={`payment-method-card ${method}`} key={idx}>
@@ -330,7 +512,7 @@ const FinancialReports = () => {
                       <h3>{method.charAt(0).toUpperCase() + method.slice(1)}</h3>
                       <div className="payment-amount">₱{amount.toLocaleString()}</div>
                       <div className="payment-percentage">
-                        {percentage.toFixed(1)}% of total income
+                        {percentage.toFixed(1)}% of total revenue
                       </div>
                     </div>
                     <div className="progress-container">
@@ -356,7 +538,7 @@ const FinancialReports = () => {
                 <span className="insight-icon"><i className="fas fa-shopping-cart"></i></span>
                 <h3>Total Sales</h3>
               </div>
-              <div className="insight-value">{sales.length}</div>
+              <div className="insight-value">{salesData.length}</div>
               <div className="insight-description">Number of transactions</div>
             </div>
             
@@ -365,17 +547,17 @@ const FinancialReports = () => {
                 <span className="insight-icon"><i className="fas fa-calculator"></i></span>
                 <h3>Average Value</h3>
               </div>
-              <div className="insight-value">₱{sales.length > 0 ? (income / sales.length).toFixed(0) : '0'}</div>
+              <div className="insight-value">₱{salesData.length > 0 ? (salesTotal / salesData.length).toFixed(0) : '0'}</div>
               <div className="insight-description">Per transaction</div>
             </div>
             
             <div className="insight-card">
               <div className="insight-header">
                 <span className="insight-icon"><i className="fas fa-percentage"></i></span>
-                <h3>Profit Margin</h3>
+                <h3>Gross Margin</h3>
               </div>
-              <div className="insight-value">{income > 0 ? ((profit / income) * 100).toFixed(1) : '0'}%</div>
-              <div className="insight-description">Overall profitability</div>
+              <div className="insight-value">{salesTotal > 0 ? ((grossProfit / salesTotal) * 100).toFixed(1) : '0'}%</div>
+              <div className="insight-description">Sales to gross profit ratio</div>
             </div>
           </div>
         </div>
@@ -384,8 +566,8 @@ const FinancialReports = () => {
       {/* Product Breakdown - Accounting Style */}
       <div className="report-section product-breakdown-section">
         <div className="section-header">
-          <h2 className="section-title">Product Profit Analysis</h2>
-          <div className="section-subtitle">Detailed breakdown of revenue and profit by product</div>
+          <h2 className="section-title">Product Analysis</h2>
+          <div className="section-subtitle">Detailed breakdown of sales, expenses, and profits by product</div>
         </div>
 
         <div className="accounting-table-container">
@@ -395,25 +577,25 @@ const FinancialReports = () => {
                 <th className="product-name-col">Product</th>
                 <th>SKU</th>
                 <th>Qty Sold</th>
-                <th>Income</th>
+                <th>Sales/Income</th>
                 <th>Cost of Goods</th>
-                <th>Profit</th>
+                <th>Gross Profit</th>
                 <th>Margin</th>
               </tr>
             </thead>
             <tbody>
               {productBreakdown.map(product => (
-                <tr key={product.id} className={product.profit < 0 ? 'negative-profit' : ''}>
+                <tr key={product.id} className={product.grossProfit < 0 ? 'negative-profit' : ''}>
                   <td className="product-name-col">{product.name}</td>
                   <td>{product.sku}</td>
                   <td>{product.quantitySold}</td>
-                  <td>₱{product.income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                  <td>₱{product.sales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                   <td>₱{product.costOfGoods.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                  <td className={product.profit < 0 ? 'negative-value' : 'positive-value'}>
-                    ₱{product.profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  <td className={product.grossProfit < 0 ? 'negative-value' : 'positive-value'}>
+                    ₱{product.grossProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </td>
-                  <td className={product.profitMargin < 0 ? 'negative-value' : 'positive-value'}>
-                    {product.profitMargin.toFixed(1)}%
+                  <td className={product.grossMargin < 0 ? 'negative-value' : 'positive-value'}>
+                    {product.grossMargin.toFixed(1)}%
                   </td>
                 </tr>
               ))}
@@ -422,14 +604,14 @@ const FinancialReports = () => {
               <tr className="table-totals">
                 <td colSpan={2}><strong>TOTAL</strong></td>
                 <td><strong>{productBreakdown.reduce((sum, product) => sum + product.quantitySold, 0)}</strong></td>
-                <td><strong>₱{productBreakdown.reduce((sum, product) => sum + product.income, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                <td><strong>₱{productBreakdown.reduce((sum, product) => sum + product.sales, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
                 <td><strong>₱{productBreakdown.reduce((sum, product) => sum + product.costOfGoods, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
-                <td><strong>₱{productBreakdown.reduce((sum, product) => sum + product.profit, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                <td><strong>₱{productBreakdown.reduce((sum, product) => sum + product.grossProfit, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
                 <td>
                   <strong>
-                    {(productBreakdown.reduce((sum, product) => sum + product.income, 0) > 0 ? 
-                      (productBreakdown.reduce((sum, product) => sum + product.profit, 0) / 
-                      productBreakdown.reduce((sum, product) => sum + product.income, 0) * 100) : 0).toFixed(1)}%
+                    {(productBreakdown.reduce((sum, product) => sum + product.sales, 0) > 0 ? 
+                      (productBreakdown.reduce((sum, product) => sum + product.grossProfit, 0) / 
+                      productBreakdown.reduce((sum, product) => sum + product.sales, 0) * 100) : 0).toFixed(1)}%
                   </strong>
                 </td>
               </tr>
